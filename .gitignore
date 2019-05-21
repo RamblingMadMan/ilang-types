@@ -1,3 +1,11 @@
+# Build directories
+build
+cmake-build-*
+
+# Desktop related files
+.vs
+.directory
+
 # Prerequisites
 *.d
 
