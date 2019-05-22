@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "ilang/Type.hpp"
 
 using namespace ilang;
@@ -50,6 +52,7 @@ TypeHandle createRealType(TypeData &data, std::uint32_t numBits) noexcept{
 }
 
 TypeResult type_result(TypeData &data, TypeHandle t) noexcept{
+	std::sort(begin(data.storage), end(data.storage));
 	return {std::move(data), t};
 }
 
@@ -69,6 +72,39 @@ TypeHandle findInnerType(const TypeData &data, TypeHandle base, const Container 
 template<typename Container>
 TypeHandle findInnerNumberType(const TypeData &data, TypeHandle base, const Container &cont, std::uint32_t numBits) noexcept{
 	return findInnerType(data, base, cont, numBits ? std::make_optional(numBits) : std::nullopt);
+}
+
+template<typename Comp>
+auto getSortedTypes(const TypeData &data, Comp &&comp = std::less<>{}){
+	std::vector<TypeHandle> types;
+	types.reserve(data.storage.size());
+	
+	for(auto &&ptr : data.storage){
+		types.emplace_back(ptr.get());
+	}
+	
+	std::sort(begin(types), end(types), std::forward<Comp>(comp));
+	return types;
+}
+
+TypeHandle findTypeByString(const TypeData &data, std::string_view str){
+	auto typeStrCmp = [](TypeHandle lhs, TypeHandle rhs){ return lhs->str < rhs->str; };
+	auto types = getSortedTypes(data, typeStrCmp);
+	auto res = std::lower_bound(begin(types), end(types), typeStrCmp);
+	if(res != end(types))
+		return *res;
+	
+	return nullptr;
+}
+
+TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled){
+	auto typeMangledCmp = [](TypeHandle lhs, TypeHandle rhs){ return lhs->mangled < rhs->mangled; };
+	auto types = getSortedTypes(data, typeMangledCmp);
+	auto res = std::lower_bound(begin(types), end(types), typeMangledCmp);
+	if(res != end(types))
+		return *res;
+	
+	return nullptr;
 }
 
 TypeHandle ilang::findUnitType(const TypeData &data) noexcept{
@@ -141,6 +177,15 @@ TypeResult ilang::getRationalType(TypeData data, std::uint32_t numBits){
 
 TypeResult ilang::getRealType(TypeData data, std::uint32_t numBits){
 	return getInnerNumberType(data, data.realType, data.sizedRealTypes, numBits, createRealType);
+}
+
+TypeResult ilang::getPartialType(TypeData data){
+	auto type = std::make_unique<Type>();
+	auto id = std::to_string(data.partialTypes.size());
+	type->str = "Unique" + id;
+	type->mangled = "_" + id;
+	auto &&typePtr = data.storage.emplace_back(std::move(type));
+	return type_result(data, typePtr.get());
 }
 
 TypeData::TypeData(){

@@ -78,6 +78,7 @@ namespace ilang{
 		std::map<StringEncoding, TypeHandle> encodedStringTypes;
 		std::map<std::vector<TypeHandle>, TypeHandle> sumTypes;
 		std::map<std::vector<TypeHandle>, TypeHandle> productTypes;
+		std::vector<TypeHandle> partialTypes;
 		std::vector<std::unique_ptr<Type>> storage;
 	};
 
@@ -90,6 +91,12 @@ namespace ilang{
 	 *
 	 ****************************************/
 
+	//! find a type by name
+	TypeHandle findTypeByString(const TypeData &data, std::string_view str);
+	
+	//! find a type by mangled name
+	TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled);
+	
 	//! find the unit type
 	TypeHandle findUnitType(const TypeData &data) noexcept;
 
@@ -134,6 +141,9 @@ namespace ilang{
 	
 	//! Get a real type
 	TypeResult getRealType(TypeData data, std::uint32_t numBits = 0);
+	
+	//! Get a unique incomplete type (used for unresolved expression types)
+	TypeResult getPartialType(TypeData data);
 }
 
 // comparing type data structures
