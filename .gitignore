@@ -4,6 +4,8 @@ cmake-build-*
 
 # Desktop related files
 .vs
+.kdev4
+*.kdev4
 .directory
 
 # Prerequisites
