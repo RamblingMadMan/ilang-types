@@ -2,7 +2,7 @@
 
 using namespace ilang;
 
-TypeHandle createEncodedStringType(TypeData &data, StringEncoding encoding){
+TypeHandle createEncodedStringType(TypeData &data, StringEncoding encoding) noexcept{
 	auto type = std::make_unique<Type>();
 	type->base = data.stringType;
 
@@ -19,7 +19,7 @@ TypeHandle createSizedNumberType(
 	TypeData &data, TypeHandle base,
 	const std::string &name, const std::string &mangledName,
 	std::uint32_t numBits
-)
+) noexcept
 {
 	if(numBits == 0) return base;
 
@@ -33,61 +33,102 @@ TypeHandle createSizedNumberType(
 	return data.storage.emplace_back(std::move(type)).get();
 }
 
-TypeHandle createNaturalType(TypeData &data, std::uint32_t numBits){
+TypeHandle createNaturalType(TypeData &data, std::uint32_t numBits) noexcept{
 	return createSizedNumberType(data, data.naturalType, "Natural", "n", numBits);
 }
 
-TypeHandle createIntegerType(TypeData &data, std::uint32_t numBits){
+TypeHandle createIntegerType(TypeData &data, std::uint32_t numBits) noexcept{
 	return createSizedNumberType(data, data.naturalType, "Integer", "i", numBits);
 }
 
-TypeHandle createRationalType(TypeData &data, std::uint32_t numBits){
+TypeHandle createRationalType(TypeData &data, std::uint32_t numBits) noexcept{
 	return createSizedNumberType(data, data.naturalType, "Rational", "q", numBits);
 }
 
-TypeHandle createRealType(TypeData &data, std::uint32_t numBits){
+TypeHandle createRealType(TypeData &data, std::uint32_t numBits) noexcept{
 	return createSizedNumberType(data, data.naturalType, "Real", "r", numBits);
 }
 
-TypeResult type_result(TypeData &data, TypeHandle t){
+TypeResult type_result(TypeData &data, TypeHandle t) noexcept{
 	return {std::move(data), t};
 }
 
-template<typename Container, typename CreateFn>
+template<typename Container, typename Key>
+TypeHandle findInnerType(const TypeData &data, TypeHandle base, const Container &cont, std::optional<Key> key) noexcept{
+	if(key){
+		auto res = cont.find(*key);
+		if(res != end(cont))
+			return res->second;
+
+		return nullptr;
+	}
+	else
+		return base;
+}
+
+template<typename Container>
+TypeHandle findInnerNumberType(const TypeData &data, TypeHandle base, const Container &cont, std::uint32_t numBits) noexcept{
+	return findInnerType(data, base, cont, numBits ? std::make_optional(numBits) : std::nullopt);
+}
+
+TypeHandle ilang::findUnitType(const TypeData &data) noexcept{
+	return data.unitType;
+}
+
+TypeHandle ilang::findStringType(const TypeData &data, std::optional<StringEncoding> encoding) noexcept{
+	return findInnerType(data, data.stringType, data.encodedStringTypes, encoding);
+}
+
+TypeHandle ilang::findNaturalType(const TypeData &data, std::uint32_t numBits) noexcept{
+	return findInnerNumberType(data, data.naturalType, data.sizedNaturalTypes, numBits);
+}
+
+TypeHandle ilang::findIntegerType(const TypeData &data, std::uint32_t numBits) noexcept{
+	return findInnerNumberType(data, data.integerType, data.sizedIntegerTypes, numBits);
+}
+
+TypeHandle ilang::findRationalType(const TypeData &data, std::uint32_t numBits) noexcept{
+	return findInnerNumberType(data, data.rationalType, data.sizedRationalTypes, numBits);
+}
+
+TypeHandle ilang::findRealType(const TypeData &data, std::uint32_t numBits) noexcept{
+	return findInnerNumberType(data, data.realType, data.sizedRealTypes, numBits);
+}
+
+template<typename Container, typename Key, typename Create>
+TypeResult getInnerType(
+	TypeData &data, TypeHandle base,
+	Container &&container, std::optional<Key> key,
+	Create &&create
+){
+	auto res = findInnerType(data, base, container, key);
+	if(res) return type_result(data, res);
+	else return type_result(data, create(data, *key));
+}
+
+template<typename Container, typename Create>
 TypeResult getInnerNumberType(
 	TypeData &data, TypeHandle base,
 	Container &&container, std::uint32_t numBits,
-	CreateFn createFn
+	Create &&create
 ){
-	if(numBits){
-		auto res = container.find(numBits);
-		if(res != end(container))
-			return type_result(data, res->second);
-
-		return type_result(data, createFn(data, numBits));
-	}
-
-	return type_result(data, base);
+	return getInnerType(
+		data, base, container,
+		numBits ? std::make_optional(numBits) : std::nullopt,
+		std::forward<Create>(create)
+	);
 }
 
 TypeResult ilang::getUnitType(TypeData data){
 	return type_result(data, data.unitType);
 }
 
-TypeResult ilang::getStringType(TypeData data, std::optional<StringEncoding> encoding){
-	if(encoding){
-		auto res = data.encodedStringTypes.find(*encoding);
-		if(res != end(data.encodedStringTypes))
-			return type_result(data, res->second);
-
-		return type_result(data, createEncodedStringType(data, *encoding));
-	}
-	else
-		return type_result(data, data.stringType);
-}
-
 TypeResult ilang::getNaturalType(TypeData data, std::uint32_t numBits){
 	return getInnerNumberType(data, data.naturalType, data.sizedNaturalTypes, numBits, createNaturalType);
+}
+
+TypeResult ilang::getStringType(TypeData data, std::optional<StringEncoding> encoding){
+	return getInnerType(data, data.stringType, data.encodedStringTypes, encoding, createEncodedStringType);
 }
 
 TypeResult ilang::getIntegerType(TypeData data, std::uint32_t numBits){

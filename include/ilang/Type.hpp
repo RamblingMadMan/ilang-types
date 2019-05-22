@@ -50,11 +50,15 @@ namespace ilang{
 	 * \brief Type data required to make type calculations
 	 *
 	 * This should be treated as an Opaque data structure and
-	 * should be only ever be used in the following way:
+	 * only ever be used with the accompanying find and get functions:
 	 * \code{.cpp}
+	 * // possible insertions; always get a result
 	 * TypeData data;
 	 * TypeHandle result;
-	 * std::tie(data, result) = get_Type(std::move(data), ...);
+	 * std::tie(data, result) = get___Type(std::move(data), ...);
+	 *
+	 * // just a query; can get nullptr
+	 * TypeHandle otherResult = find___Type(data, ...);
 	 * \endcode
 	 *
 	 * TypeData exists this way to make state change explicit. This
@@ -77,15 +81,48 @@ namespace ilang{
 		std::vector<std::unique_ptr<Type>> storage;
 	};
 
-	//! Result type of all type calculations
+	//! Result type of possibly state modifying type calculations
 	using TypeResult = std::pair<TypeData, TypeHandle>;
+
+	/****************************************
+	 *
+	 *     Type finding functions
+	 *
+	 ****************************************/
+
+	//! find the unit type
+	TypeHandle findUnitType(const TypeData &data) noexcept;
+
+	//! find a string type
+	TypeHandle findStringType(const TypeData &data, std::optional<StringEncoding> encoding = std::nullopt) noexcept;
+
+	//! find a natural type
+	TypeHandle findNaturalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+
+	//! find an integer type
+	TypeHandle findIntegerType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	
+	//! find a rational type
+	TypeHandle findRationalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	
+	//! find a real type
+	TypeHandle findRealType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+
+
+	/****************************************
+	 *
+	 *     Type getting functions
+	 *     these create new types if no
+	 *     result is found
+	 *
+	 ****************************************/
 
 	//! Get the unit type
 	TypeResult getUnitType(TypeData data);
 
 	//! Get a string type
 	TypeResult getStringType(TypeData data, std::optional<StringEncoding> encoding = std::nullopt);
-	
+
 	//! Get a natural type
 	TypeResult getNaturalType(TypeData data, std::uint32_t numBits = 0);
 	
