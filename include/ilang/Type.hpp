@@ -81,6 +81,12 @@ namespace ilang{
 		std::vector<TypeHandle> partialTypes;
 		std::vector<std::unique_ptr<Type>> storage;
 	};
+	
+	//! Check if type is a function type
+	bool isFunctionType(TypeHandle type) noexcept;
+	
+	//! Check if type is a partial type
+	bool isPartialType(TypeHandle type) noexcept;
 
 	//! Result type of possibly state modifying type calculations
 	using TypeResult = std::pair<TypeData, TypeHandle>;

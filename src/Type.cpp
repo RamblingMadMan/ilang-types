@@ -56,6 +56,14 @@ TypeResult type_result(TypeData &data, TypeHandle t) noexcept{
 	return {std::move(data), t};
 }
 
+bool ilang::isFunctionType(ilang::TypeHandle type) noexcept{
+	return type->mangled[0] == 'f';
+}
+
+bool ilang::isPartialType(TypeHandle type) noexcept{
+	return type->mangled[0] == '_';
+}
+
 template<typename Container, typename Key>
 TypeHandle findInnerType(const TypeData &data, TypeHandle base, const Container &cont, std::optional<Key> key) noexcept{
 	if(key){
