@@ -7,11 +7,3 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(include)
 
 add_subdirectory(lib)
-
-install(
-	TARGETS ilang-types
-	ARCHIVE
-		DESTINATION lib
-	PUBLIC_HEADER
-		DESTINATION include/ilang
-)

@@ -10,3 +10,11 @@ set(
 
 add_library(ilang-types ${ILANG_TYPES_SOURCES})
 set_target_properties(ilang-types PROPERTIES PUBLIC_HEADER ${ILANG_TYPES_HEADERS})
+
+install(
+	TARGETS ilang-types
+	ARCHIVE
+		DESTINATION lib
+	PUBLIC_HEADER
+		DESTINATION include/ilang
+)
