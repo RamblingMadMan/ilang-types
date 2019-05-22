@@ -72,7 +72,8 @@ namespace ilang{
 		std::map<std::uint32_t, TypeHandle> sizedRationalTypes;
 		std::map<std::uint32_t, TypeHandle> sizedRealTypes;
 		std::map<StringEncoding, TypeHandle> encodedStringTypes;
-		std::map<std::vector<TypeHandle>, TypeHandle> 
+		std::map<std::vector<TypeHandle>, TypeHandle> sumTypes;
+		std::map<std::vector<TypeHandle>, TypeHandle> productTypes;
 		std::vector<std::unique_ptr<Type>> storage;
 	};
 
