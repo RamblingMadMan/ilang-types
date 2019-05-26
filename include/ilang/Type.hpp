@@ -2,6 +2,7 @@
 #define ILANG_TYPE_HPP 1
 
 #include <string>
+#include <string_view>
 #include <memory>
 #include <vector>
 #include <optional>

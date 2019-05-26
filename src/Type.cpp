@@ -83,7 +83,7 @@ TypeHandle findInnerNumberType(const TypeData &data, TypeHandle base, const Cont
 }
 
 template<typename Comp>
-auto getSortedTypes(const TypeData &data, Comp &&comp = std::less<>{}){
+auto getSortedTypes(const TypeData &data, Comp &&comp = std::less<void>{}){
 	std::vector<TypeHandle> types;
 	types.reserve(data.storage.size());
 	
@@ -96,9 +96,8 @@ auto getSortedTypes(const TypeData &data, Comp &&comp = std::less<>{}){
 }
 
 TypeHandle findTypeByString(const TypeData &data, std::string_view str){
-	auto typeStrCmp = [](TypeHandle lhs, TypeHandle rhs){ return lhs->str < rhs->str; };
-	auto types = getSortedTypes(data, typeStrCmp);
-	auto res = std::lower_bound(begin(types), end(types), typeStrCmp);
+	auto types = getSortedTypes(data, [](auto lhs, auto rhs){ return lhs->str < rhs->str; });
+	auto res = std::lower_bound(begin(types), end(types), str, [](TypeHandle lhs, auto rhs){ return lhs->str < rhs; });
 	if(res != end(types))
 		return *res;
 	
@@ -106,9 +105,8 @@ TypeHandle findTypeByString(const TypeData &data, std::string_view str){
 }
 
 TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled){
-	auto typeMangledCmp = [](TypeHandle lhs, TypeHandle rhs){ return lhs->mangled < rhs->mangled; };
-	auto types = getSortedTypes(data, typeMangledCmp);
-	auto res = std::lower_bound(begin(types), end(types), typeMangledCmp);
+	auto types = getSortedTypes(data, [](auto lhs, auto rhs){ return lhs->mangled < rhs->mangled; });
+	auto res = std::lower_bound(begin(types), end(types), mangled, [](TypeHandle lhs, auto rhs){ return lhs->mangled < rhs; });
 	if(res != end(types))
 		return *res;
 	
