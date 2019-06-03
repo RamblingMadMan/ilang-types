@@ -113,6 +113,10 @@ TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled){
 	return nullptr;
 }
 
+TypeHandle ilang::findTypeType(const TypeData& data) noexcept{
+	return data.typeType;
+}
+
 TypeHandle ilang::findUnitType(const TypeData &data) noexcept{
 	return data.unitType;
 }
@@ -137,6 +141,20 @@ TypeHandle ilang::findRealType(const TypeData &data, std::uint32_t numBits) noex
 	return findInnerNumberType(data, data.realType, data.sizedRealTypes, numBits);
 }
 
+TypeHandle findSumTypeInner(const TypeData &data, const std::vector<TypeHandle> &uniqueSortedInnerTypes) noexcept{
+	return findInnerType(data, nullptr, data.sumTypes, std::make_optional(std::ref(uniqueSortedInnerTypes)));	
+}
+
+TypeHandle ilang::findSumType(const TypeData &data, std::vector<TypeHandle> innerTypes) noexcept{
+	std::sort(begin(innerTypes), end(innerTypes));
+	innerTypes.erase(std::unique(begin(innerTypes), end(innerTypes)), end(innerTypes));
+	return findSumTypeInner(data, innerTypes);
+}
+
+TypeHandle ilang::findProductType(const TypeData &data, const std::vector<TypeHandle> &innerTypes) noexcept{
+	return findInnerType(data, nullptr, data.productTypes, std::make_optional(std::ref(innerTypes)));
+}
+
 template<typename Container, typename Key, typename Create>
 TypeResult getInnerType(
 	TypeData &data, TypeHandle base,
@@ -159,6 +177,10 @@ TypeResult getInnerNumberType(
 		numBits ? std::make_optional(numBits) : std::nullopt,
 		std::forward<Create>(create)
 	);
+}
+
+TypeResult ilang::getTypeType(TypeData data){
+	return type_result(data, data.typeType);
 }
 
 TypeResult ilang::getUnitType(TypeData data){
@@ -194,45 +216,84 @@ TypeResult ilang::getPartialType(TypeData data){
 	return type_result(data, typePtr.get());
 }
 
+TypeResult ilang::getSumType(TypeData data, std::vector<TypeHandle> innerTypes){
+	std::sort(begin(innerTypes), end(innerTypes));
+	innerTypes.erase(std::unique(begin(innerTypes), end(innerTypes)), end(innerTypes));
+	
+	auto res = findSumTypeInner(data, innerTypes);
+	if(res)
+		return type_result(data, res);
+	
+	auto &&newType = data.storage.emplace_back(std::make_unique<Type>());
+	
+	newType->types = std::move(innerTypes);
+	
+	newType->mangled = "u" + std::to_string(innerTypes.size());
+	newType->mangled += innerTypes[0]->mangled;
+	
+	newType->str = innerTypes[0]->str;
+	
+	for(std::size_t i = 1; i < innerTypes.size(); i++){
+		newType->mangled += innerTypes[i]->mangled;
+		newType->str += " | " + innerTypes[i]->str;
+	}
+	
+	auto[it, good] = data.sumTypes.try_emplace(newType->types, newType.get());
+	
+	if(!good){
+		// TODO: throw TypeError
+	}
+	
+	return type_result(data, newType.get());
+}
+
+TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTypes){
+	if(innerTypes.size() < 2){
+		// TODO: throw TypeError
+	}
+	
+	auto res = findProductType(data, innerTypes);
+	if(res)
+		return type_result(data, res);
+	
+	auto &&newType = data.storage.emplace_back(std::make_unique<Type>());
+	
+	newType->types = std::move(innerTypes);
+	
+	newType->mangled = "p" + std::to_string(innerTypes.size()) + innerTypes[0]->mangled;
+	newType->str = innerTypes[0]->str;
+	
+	for(std::size_t i = 1; i < innerTypes.size(); i++){
+		newType->mangled += innerTypes[i]->mangled;
+		newType->str += " * " + innerTypes[i]->str;
+	}
+	
+	auto[it, good] = data.productTypes.try_emplace(newType->types, newType.get());
+	
+	if(!good){
+		// TODO: throw TypeError
+	}
+	
+	return type_result(data, newType.get());
+}
+
 TypeData::TypeData(){
-	auto unitT = new Type;
-	auto strT = new Type;
-	auto numT = new Type;
-	auto natT = new Type;
-	auto intT = new Type;
-	auto ratioT = new Type;
-	auto realT = new Type;
-
-	unitT->str = "Unit";
-	unitT->mangled = "u0";
-
-	strT->str = "String";
-	strT->mangled = "s?";
-
-	numT->str = "Number";
-	numT->mangled = "w?";
-
-	natT->base = numT;
-	natT->str = "Natural";
-	natT->mangled = "n?";
-
-	intT->base = numT;
-	intT->str = "Integer";
-	intT->mangled = "i?";
-
-	ratioT->base = numT;
-	ratioT->str = "Rational";
-	ratioT->mangled = "q?";
-
-	realT->base = numT;
-	realT->str = "Real";
-	realT->mangled = "r?";
-
-	unitType = unitT;
-	stringType = strT;
-	numberType = numT;
-	naturalType = natT;
-	integerType = intT;
-	rationalType = ratioT;
-	realType = realT;
+	auto newType = [this](auto str, auto mangled, auto base = nullptr){
+		auto &&ptr = storage.emplace_back(std::make_unique<Type>());
+		ptr->base = base;
+		ptr->str = std::move(str);
+		ptr->mangled = std::move(mangled);
+		return ptr.get();
+	};
+	
+	typeType = newType("Type", "t?", nullptr);
+	unitType = newType("Unit", "u0", nullptr);
+	stringType = newType("String", "s?", nullptr);
+	numberType = newType("Number", "w?", nullptr);
+	complexType = newType("Complex", "c?", numberType);
+	realType = newType("Real", "r?", complexType);
+	rationalType = newType("Rational", "q?", realType);
+	integerType = newType("Integer", "i?", rationalType);
+	naturalType = newType("Natural", "n?", integerType);
+	booleanType = newType("Boolean", "b?", naturalType);
 }

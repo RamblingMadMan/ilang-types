@@ -1,10 +1,12 @@
 /**
 
+\file
+
 \mainpage
 
 \section types Data Types
 
-There are only a few data types in the implementation of the type system, the most commonly encountered ones are \ref TypeData, \ref Type and \ref TypeHandle.
+There are only a few data types in the implementation of the type system, the most commonly encountered ones are ilang::TypeData, ilang::Type and ilang::TypeHandle.
 
 \section getters Getting types
 

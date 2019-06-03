@@ -71,9 +71,10 @@ namespace ilang{
 	struct TypeData{
 		TypeData();
 
+		TypeHandle typeType;
 		TypeHandle unitType;
 		TypeHandle stringType;
-		TypeHandle numberType, naturalType, integerType, rationalType, realType;
+		TypeHandle numberType, complexType, realType, rationalType, integerType, naturalType, booleanType;
 		std::map<std::uint32_t, TypeHandle> sizedNaturalTypes;
 		std::map<std::uint32_t, TypeHandle> sizedIntegerTypes;
 		std::map<std::uint32_t, TypeHandle> sizedRationalTypes;
@@ -97,33 +98,42 @@ namespace ilang{
 	/**
 	 * \defgroup TypeFinders Type finding functions
 	 * \brief Functions for finding a type without modifying any state.
-	 * \returns The TypeHandle or nullptr if it could not be found.
+	 * \returns The \ref TypeHandle or nullptr if it could not be found.
 	 * \{
 	 **/
 
-	//! find a type by name
+	//! Find a type by name
 	TypeHandle findTypeByString(const TypeData &data, std::string_view str);
 	
-	//! find a type by mangled name
+	//! Find a type by mangled name
 	TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled);
 	
-	//! find the unit type
+	//! Find the type type
+	TypeHandle findTypeType(const TypeData &data) noexcept;
+	
+	//! Find the unit type
 	TypeHandle findUnitType(const TypeData &data) noexcept;
 
-	//! find a string type
+	//! Find a string type
 	TypeHandle findStringType(const TypeData &data, std::optional<StringEncoding> encoding = std::nullopt) noexcept;
 
-	//! find a natural type
+	//! Find a natural type
 	TypeHandle findNaturalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
 
-	//! find an integer type
+	//! Find an integer type
 	TypeHandle findIntegerType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
 	
-	//! find a rational type
+	//! Find a rational type
 	TypeHandle findRationalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
 	
-	//! find a real type
+	//! Find a real type
 	TypeHandle findRealType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	
+	//! Find a sum type
+	TypeHandle findSumType(const TypeData &data, std::vector<TypeHandle> innerTypes) noexcept;
+	
+	//! Find a product type
+	TypeHandle findProductType(const TypeData &data, const std::vector<TypeHandle> &innerTypes) noexcept;
 	
 	/** \} */
 
@@ -131,10 +141,13 @@ namespace ilang{
 	/**
 	 * \defgroup TypeGetters Type getting functions
 	 * \brief Functions for getting a type, otherwise creating it.
-	 * \returns Pair of the TypeData and resulting TypeHandle (in that order)
+	 * \returns Pair of the \ref TypeData and resulting \ref TypeHandle (in that order)
 	 * \{
 	 **/
 
+	//! Get the type type
+	TypeResult getTypeType(TypeData data);
+	
 	//! Get the unit type
 	TypeResult getUnitType(TypeData data);
 
@@ -153,8 +166,14 @@ namespace ilang{
 	//! Get a real type
 	TypeResult getRealType(TypeData data, std::uint32_t numBits = 0);
 	
-	//! Get a unique incomplete type (used for unresolved expressions)
+	//! Get a unique incomplete type (used for unresolved expressions and partial typing)
 	TypeResult getPartialType(TypeData data);
+	
+	//! Get a sum type
+	TypeResult getSumType(TypeData data, std::vector<TypeHandle> innerTypes);
+
+	//! Get a product type
+	TypeResult getProductType(TypeData data, std::vector<TypeHandle> innerTypes);
 	
 	/** \} */
 }
