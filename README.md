@@ -7,22 +7,31 @@ One side-effect of this is that there are no concrete fixed-width types. That is
 
 This can usually be treated as an implementation detail. E.g. on a system with no support for 16-bit integers, `Int16` might be represented by the C type `int32_t` but on other (more traditional) systems it would more probably be represented by `int16_t`.
 
+## The `Infinity` Type
+
+The `Infinity` type is the base for all types in Infinity Lang.
+  
+When creating more specializaed types, we can think of the process as restricting the range of values of some other type.
+This concept applies to every type in the system, so there must be some type that can represent *every* value. This is where the `Infinity` type comes in to play. It is a recursive type, using itself as it's base type, that represents any possible value (existing or not). We refine this type further to get sub-groups of values e.g. the `Complex` or `Rational` numbers.
+
 ## Base Types
 
 There are a number of abstract base types (that may be based on one another) used as the base for complete types.
 
-| Description                                  | Abstract Type | Base     | Example Implementation     |
-| -------------------------------------------- | ------------- | -------- | -------------------------- |
-| An atomic mathematical unit                  | `Number`      | None     | N/A                        |
-| A string of characters                       | `String`      | None     | N/A                        |
-| Mapping from keys to values                  | `Map K T`     | None     | N/A                        |
-| A list of values of `T`                      | `List T`      | None     | N/A                        |
-| A tree structure with nodes of `T`           | `Tree T`      | `List T` | N/A                        |
-| A contiguously laid out series of `T` values | `Array T`     | `List T` | N/A                        |
-| Counting numbers                             | `Natural`     | `Number` | C `uint32_t` type          |
-| Round numbers                                | `Integer`     | `Number` | C `int32_t` type           |
-| Real numbers with quotient form              | `Rational`    | `Number` | Pair of an `Integer` type  |
-| Real numbers                                 | `Real`        | `Number` | C `float` or `double` type |
+| Description                                  | Abstract Type | Base       | Example Implementation     |
+| -------------------------------------------- | ------------- | ---------- | -------------------------- |
+| An atomic mathematical unit                  | `Number`      | `Infinity` | N/A                        |
+| A string of characters                       | `String`      | `Infinity` | N/A                        |
+| Mapping from keys to values                  | `Map K T`     | `Infinity` | N/A                        |
+| A list of values of `T`                      | `List T`      | `Infinity` | N/A                        |
+| A tree structure with nodes of `T`           | `Tree T`      | `List T`   | N/A                        |
+| A contiguously laid out series of `T` values | `Array T`     | `List T`   | N/A                        |
+| Complex numbers                              | `Complex`     | `Number`   | C `complex` type           |
+| Real numbers                                 | `Real`        | `Complex`  | C `float` or `double` type |
+| Rational Real numbers                        | `Rational`    | `Real`     | Pair of an `Integer` type  |
+| Whole numbers                                | `Integer`     | `Rational` | C `int32_t` type           |
+| Counting numbers                             | `Natural`     | `Integer`  | C `uint32_t` type          |
+
 
 ## Complete Types
 
@@ -52,16 +61,16 @@ Compound types are used to construct more complex types from simple types.
 
 ## Type Promotion
 
-Type promotion is only performed to pass lesser-precision values as higher-precision arguments.
+Type promotion is only performed when a sub-type needs to be converted to it's base.
 
-Type promotion works in the following directions:
+E.g. for number types, the following rules apply (for any operation):
 
 | LHS Type   | RHS Type   | Result Type |
 | ---------- | ---------- | ----------- |
 | `Integer`  | `Natural`  | `Integer`   |
 | `Integer`  | `Rational` | `Rational`  |
-| `Integer`  | `Real`     | `Real`      |
 | `Rational` | `Natural`  | `Rational`  |
-| `Rational` | `Real`     | `Rational`  |
+| `Integer`  | `Real`     | `Real`      |
+| `Rational` | `Real`     | `Real`      |
 | `Real`     | `Natural`  | `Real`      |
 
