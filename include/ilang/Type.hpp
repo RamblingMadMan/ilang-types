@@ -8,13 +8,15 @@
 #include <optional>
 #include <map>
 
+/** \file */
+
 namespace ilang{
 	//! String encoding type
 	enum class StringEncoding{
 		ascii, utf8
 	};
 
-	//! Type for type values
+	//! Data type for type values
 	struct Type{
 		//! Base type of the type.
 		const Type *base = nullptr;
@@ -44,27 +46,27 @@ namespace ilang{
 		std::vector<const Type*> types;
 	};
 
-	//! Used to pass around types
+	//! \brief Used for type comparisons
 	using TypeHandle = const Type*;
 
 	/**
-	 * \brief Type data required to make type calculations
+	 * \brief Data required for type calculations
 	 *
-	 * This should be treated as an Opaque data structure and
+	 * This should be treated as an opaque data type and
 	 * only ever be used with the accompanying find and get functions:
 	 * \code{.cpp}
 	 * // possible insertions; always get a result
 	 * TypeData data;
-	 * TypeHandle result;
-	 * std::tie(data, result) = get___Type(std::move(data), ...);
+	 * 
+	 * auto[typeData, int32_type] = getIntegerType(std::move(data), 32);
 	 *
 	 * // just a query; can get nullptr
-	 * TypeHandle otherResult = find___Type(data, ...);
+	 * auto int_type = findIntegerType(typeData);
 	 * \endcode
 	 *
 	 * TypeData exists this way to make state change explicit. This
-	 * verbose expression of state is important for high-order interoperability
-	 * with languages using this type system.
+	 * verbose expression of state is important for high-level interoperability
+	 * with languages using the type system.
 	 **/
 	struct TypeData{
 		TypeData();
@@ -89,14 +91,15 @@ namespace ilang{
 	//! Check if type is a partial type
 	bool isPartialType(TypeHandle type) noexcept;
 
-	//! Result type of possibly state modifying type calculations
+	//! \brief Result type of possibly state modifying type calculations
 	using TypeResult = std::pair<TypeData, TypeHandle>;
 
-	/****************************************
-	 *
-	 *     Type finding functions
-	 *
-	 ****************************************/
+	/**
+	 * \defgroup TypeFinders Type finding functions
+	 * \brief Functions for finding a type without modifying any state.
+	 * \returns The TypeHandle or nullptr if it could not be found.
+	 * \{
+	 **/
 
 	//! find a type by name
 	TypeHandle findTypeByString(const TypeData &data, std::string_view str);
@@ -121,15 +124,16 @@ namespace ilang{
 	
 	//! find a real type
 	TypeHandle findRealType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	
+	/** \} */
 
 
-	/****************************************
-	 *
-	 *     Type getting functions
-	 *     these create new types if no
-	 *     result is found
-	 *
-	 ****************************************/
+	/**
+	 * \defgroup TypeGetters Type getting functions
+	 * \brief Functions for getting a type, otherwise creating it.
+	 * \returns Pair of the TypeData and resulting TypeHandle (in that order)
+	 * \{
+	 **/
 
 	//! Get the unit type
 	TypeResult getUnitType(TypeData data);
@@ -149,8 +153,10 @@ namespace ilang{
 	//! Get a real type
 	TypeResult getRealType(TypeData data, std::uint32_t numBits = 0);
 	
-	//! Get a unique incomplete type (used for unresolved expression types)
+	//! Get a unique incomplete type (used for unresolved expressions)
 	TypeResult getPartialType(TypeData data);
+	
+	/** \} */
 }
 
 // comparing type data structures

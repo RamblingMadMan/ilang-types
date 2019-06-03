@@ -1,0 +1,14 @@
+/**
+
+\mainpage
+
+\section types Data Types
+
+There are only a few data types in the implementation of the type system, the most commonly encountered ones are \ref TypeData, \ref Type and \ref TypeHandle.
+
+\section getters Getting types
+
+For finding a type, use the \ref TypeFinders.
+For getting a type, with a guaranteed results, use the \ref TypeGetters.
+
+**/ 
