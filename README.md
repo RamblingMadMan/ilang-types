@@ -55,7 +55,7 @@ Compound types are used to construct more complex types from simple types.
 | Static array                 | `Array T`     | `StaticArray T N`  | `[x0, x1, xn...]`                         | `T[N]`                     |
 | Ordered map                  | `Map K T`     | `OrderedMap K T`   | `["x0" -> x0, "x1" -> x1, "xn" -> xn...]` | `std::map<K, T>`           |
 | Unordered map                | `Map K T`     | `UnorderedMap K T` | Same as above                             | `std::unordered_map<K, T>` |
-| Sum type / Union             | N/A           | `T | U...`         | Value of any of the summed types          | `std::variant<T, U...>`    |
+| Sum type / Union             | N/A           | `T \| U...`         | Value of any of the summed types          | `std::variant<T, U...>`    |
 | Product type / Tuple         | N/A           | `T * U...`         | `(1, "Hello")`                            | `std::tuple<T, U...>`      |
 | Composite data type / Struct | N/A           | `{x: T, xs: U...}` | Constructor based                         | `struct{ T x; U xs...; }`  |
 
@@ -63,14 +63,14 @@ Compound types are used to construct more complex types from simple types.
 
 Type promotion is only performed when a sub-type needs to be converted to it's base.
 
-E.g. for number types, the following rules apply (for any operation):
+E.g. for number types, the following rules apply (for any operation; LHS and RHS are interchangeable):
 
 | LHS Type   | RHS Type   | Result Type |
 | ---------- | ---------- | ----------- |
 | `Integer`  | `Natural`  | `Integer`   |
-| `Integer`  | `Rational` | `Rational`  |
+| `Rational` | `Integer`  | `Rational`  |
 | `Rational` | `Natural`  | `Rational`  |
-| `Integer`  | `Real`     | `Real`      |
-| `Rational` | `Real`     | `Real`      |
+| `Real`     | `Integer`  | `Real`      |
+| `Real`     | `Rational` | `Real`      |
 | `Real`     | `Natural`  | `Real`      |
 
