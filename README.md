@@ -10,13 +10,15 @@ This can usually be treated as an implementation detail. E.g. on a system with n
 ## The `Infinity` Type
 
 The `Infinity` type is the base for all types in Infinity Lang.
-  
-When creating more specializaed types, we can think of the process as restricting the range of values of some other type.
+
+When creating more specialized types, we can think of the process as restricting the range of values of some other type.
 This concept applies to every type in the system, so there must be some type that can represent *every* value. This is where the `Infinity` type comes in to play. It is a recursive type, using itself as it's base type, that represents any possible value (existing or not). We refine this type further to get sub-groups of values e.g. the `Complex` or `Rational` numbers.
+
+![Diagram of base types and their bases](base-diagram.png)
 
 ## Base Types
 
-There are a number of abstract base types (that may be based on one another) used as the base for complete types.
+There are a number of base types (that may be based on one another) used as the basis for value types.
 
 | Description                                  | Abstract Type | Base       | Example Implementation     |
 | -------------------------------------------- | ------------- | ---------- | -------------------------- |
@@ -26,16 +28,17 @@ There are a number of abstract base types (that may be based on one another) use
 | A list of values of `T`                      | `List T`      | `Infinity` | N/A                        |
 | A tree structure with nodes of `T`           | `Tree T`      | `List T`   | N/A                        |
 | A contiguously laid out series of `T` values | `Array T`     | `List T`   | N/A                        |
-| Complex numbers                              | `Complex`     | `Number`   | C `complex` type           |
+| Complex numbers                              | `Complex`     | `Number`   | C `_Complex` type          |
+| Imaginary numbers                            | `Imaginary`   | `Complex`  | C `_Imaginary` type        |
 | Real numbers                                 | `Real`        | `Complex`  | C `float` or `double` type |
 | Rational Real numbers                        | `Rational`    | `Real`     | Pair of an `Integer` type  |
 | Whole numbers                                | `Integer`     | `Rational` | C `int32_t` type           |
 | Counting numbers                             | `Natural`     | `Integer`  | C `uint32_t` type          |
 
 
-## Complete Types
+## Value Types
 
-Complete types are those that can not be refined within their concept any further. An example of a complete type is `Natural32`; A natural number that can be represented in 32 bits. This type can not be refined further: it encodes the category and precision of the range of possible values.
+Value types are those that are refined within their group such that they encodes the value set and the range of possible values.
 
 > Wherever a type is suffixed by an uppercase `N`, `N` may be replaced by some desired bit-width.
 
@@ -48,7 +51,7 @@ Complete types are those that can not be refined within their concept any furthe
 
 ## Compound Types
 
-Compound types are used to construct more complex types from simple types.
+Compound types are used to construct more complicated types from other types.
 
 | Name                         | Abstract Base | Type Syntax        | Value Syntax                              | Possible C/C++ Type        |
 | ---------------------------- | ------------- | ------------------ | ----------------------------------------- | -------------------------- |
@@ -63,7 +66,7 @@ Compound types are used to construct more complex types from simple types.
 
 Type promotion is only performed when a sub-type needs to be converted to it's base.
 
-E.g. for number types, the following rules apply (for any operation; LHS and RHS are interchangeable):
+E.g. for number types, the following rules apply (for any operation; LHS and RHS are interchangeable wrt type promotion):
 
 | LHS Type   | RHS Type   | Result Type |
 | ---------- | ---------- | ----------- |
