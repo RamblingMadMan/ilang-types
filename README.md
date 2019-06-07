@@ -12,7 +12,7 @@ This can usually be treated as an implementation detail. E.g. on a system with n
 The `Infinity` type is the base for all types in Infinity Lang.
 
 When creating more specialized types, we can think of the process as restricting the range of values of some other type.
-This concept applies to every type in the system, so there must be some type that can represent *every* value. This is where the `Infinity` type comes in to play. It is a recursive type, using itself as it's base type, that represents any possible value (existing or not). We refine this type further to get sub-groups of values e.g. the `Complex` or `Rational` numbers.
+This concept applies to every type in the system, so there must be some type that can represent *every* value. This is where the `Infinity` type comes in to play. It is a recursively defined type (using itself as it's base type) that represents any possible value (existing or not). We refine this type further to get sub-groups of values e.g. the `Complex` or `Rational` numbers.
 
 ![Diagram of base types and their bases](base-diagram.png)
 
