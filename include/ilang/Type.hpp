@@ -76,6 +76,7 @@ namespace ilang{
 		TypeHandle unitType;
 		TypeHandle stringType;
 		TypeHandle numberType, complexType, imaginaryType, realType, rationalType, integerType, naturalType, booleanType;
+		std::map<std::uint32_t, TypeHandle> sizedBooleanTypes;
 		std::map<std::uint32_t, TypeHandle> sizedNaturalTypes;
 		std::map<std::uint32_t, TypeHandle> sizedIntegerTypes;
 		std::map<std::uint32_t, TypeHandle> sizedRationalTypes;
@@ -152,6 +153,9 @@ namespace ilang{
 	
 	//! Find a type by mangled name
 	TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled);
+
+	// TODO: Find the most-refined common type
+	// TypeHandle commonType(TypeHandle type0, TypeHandle type1) noexcept;
 	
 	//! Find the infinity type
 	TypeHandle findInfinityType(const TypeData &data) noexcept;
@@ -164,6 +168,9 @@ namespace ilang{
 
 	//! Find a string type
 	TypeHandle findStringType(const TypeData &data, std::optional<StringEncoding> encoding = std::nullopt) noexcept;
+
+	//! Find a boolean type
+	TypeHandle findBooleanType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
 
 	//! Find a natural type
 	TypeHandle findNaturalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
@@ -216,6 +223,9 @@ namespace ilang{
 
 	//! Get a string type
 	TypeResult getStringType(TypeData data, std::optional<StringEncoding> encoding = std::nullopt);
+
+	//! Get a boolean type
+	TypeResult getBooleanType(TypeData data, std::uint32_t numBits = 0);
 
 	//! Get a natural type
 	TypeResult getNaturalType(TypeData data, std::uint32_t numBits = 0);

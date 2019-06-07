@@ -35,85 +35,9 @@ TypeHandle createSizedNumberType(
 	return data.storage.emplace_back(std::move(type)).get();
 }
 
-TypeHandle createNaturalType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.naturalType, "Natural", "n", numBits);
-}
-
-TypeHandle createIntegerType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.integerType, "Integer", "z", numBits);
-}
-
-TypeHandle createRationalType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.rationalType, "Rational", "q", numBits);
-}
-
-TypeHandle createRealType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.realType, "Real", "r", numBits);
-}
-
-TypeHandle createImaginaryType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.imaginaryType, "Imaginary", "i", numBits);
-}
-
-TypeHandle createComplexType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.complexType, "Complex", "c", numBits);
-}
-
 TypeResult type_result(TypeData &data, TypeHandle t) noexcept{
 	std::sort(begin(data.storage), end(data.storage));
 	return {std::move(data), t};
-}
-
-bool ilang::isInfinityType(TypeHandle type) noexcept{
-	return type->mangled == "??";
-}
-
-bool ilang::isTypeType(TypeHandle type) noexcept{
-	return type->mangled == "t?";
-}
-
-bool ilang::isUnitType(TypeHandle type) noexcept{
-	return type->mangled == "u0";
-}
-
-bool ilang::isStringType(TypeHandle type) noexcept{
-	return type->mangled[0] == 's';
-}
-
-bool ilang::isNaturalType(TypeHandle type) noexcept{
-	return type->mangled[0] == 'n';
-}
-
-bool ilang::isIntegerType(TypeHandle type) noexcept{
-	return type->mangled[0] == 'z';
-}
-
-bool ilang::isRationalType(TypeHandle type) noexcept{
-	return type->mangled[0] == 'q';
-}
-
-bool ilang::isRealType(TypeHandle type) noexcept{
-	return type->mangled[0] == 'r';
-}
-
-bool ilang::isImaginaryType(TypeHandle type) noexcept{
-	return type->mangled[0] == 'i';
-}
-
-bool ilang::isComplexType(TypeHandle type) noexcept{
-	return type->mangled[0] == 'c';
-}
-
-bool ilang::isNumberType(TypeHandle type) noexcept{
-	return type->mangled[0] == 'w';
-}
-
-bool ilang::isFunctionType(ilang::TypeHandle type) noexcept{
-	return type->mangled[0] == 'f';
-}
-
-bool ilang::isPartialType(TypeHandle type) noexcept{
-	return type->mangled[0] == '_';
 }
 
 template<typename Container, typename Key>
@@ -132,6 +56,73 @@ TypeHandle findInnerType(const TypeData &data, TypeHandle base, const Container 
 template<typename Container>
 TypeHandle findInnerNumberType(const TypeData &data, TypeHandle base, const Container &cont, std::uint32_t numBits) noexcept{
 	return findInnerType(data, base, cont, numBits ? std::make_optional(numBits) : std::nullopt);
+}
+
+template<typename Container, typename Key, typename Create>
+TypeResult getInnerType(
+	TypeData &data, TypeHandle base,
+	Container &&container, std::optional<Key> key,
+	Create &&create
+){
+	auto res = findInnerType(data, base, container, key);
+	if(res) return type_result(data, res);
+	else return type_result(data, create(data, *key));
+}
+
+template<typename Container, typename Create>
+TypeResult getInnerNumberType(
+	TypeData &data, TypeHandle base,
+	Container &&container, std::uint32_t numBits,
+	Create &&create
+){
+	return getInnerType(
+		data, base, container,
+		numBits ? std::make_optional(numBits) : std::nullopt,
+		std::forward<Create>(create)
+	);
+}
+
+#define NUMBER_VALUE_TYPE(T, t, mangledSig)\
+TypeHandle create##T##Type(TypeData &data, std::uint32_t numBits){\
+	return createSizedNumberType(data, data.t##Type, #T, mangledSig, numBits);\
+}\
+TypeHandle ilang::find##T##Type(const TypeData &data, std::uint32_t numBits) noexcept{\
+	return findInnerNumberType(data, data.t##Type, data.sized##T##Types, numBits);\
+}\
+TypeResult ilang::get##T##Type(TypeData data, std::uint32_t numBits){\
+	return getInnerNumberType(data, data.t##Type, data.sized##T##Types, numBits, create##T##Type);\
+}\
+bool ilang::is##T##Type(TypeHandle type) noexcept{\
+	return std::string_view(type->mangled).substr(0, 1) == mangledSig;\
+}
+
+#define BASE_TYPE(T, t, mangledStr)\
+TypeHandle ilang::find##T##Type(const TypeData &data) noexcept{ return data.t##Type; }\
+TypeResult ilang::get##T##Type(TypeData data){ return type_result(data, data.t##Type); }\
+bool ilang::is##T##Type(TypeHandle type) noexcept{ return type->mangled == mangledStr; }
+
+BASE_TYPE(Infinity, infinity, "??")
+BASE_TYPE(Type, type, "t0")
+BASE_TYPE(Unit, unit, "u0")
+BASE_TYPE(Number, number, "w?")
+
+NUMBER_VALUE_TYPE(Boolean, boolean, "b")
+NUMBER_VALUE_TYPE(Natural, natural, "n")
+NUMBER_VALUE_TYPE(Rational, rational, "q")
+NUMBER_VALUE_TYPE(Real, real, "r")
+NUMBER_VALUE_TYPE(Imaginary, imaginary, "i")
+NUMBER_VALUE_TYPE(Complex, complex, "c")
+
+bool ilang::isStringType(TypeHandle type) noexcept{
+	return type->mangled[0] == 's';
+}
+
+bool ilang::isFunctionType(ilang::TypeHandle type) noexcept{
+	return type->mangled[0] == 'f';
+}
+
+bool ilang::isPartialType(TypeHandle type) noexcept{
+	return type->mangled[0] == '_';
 }
 
 template<typename Comp>
@@ -165,48 +156,15 @@ TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled){
 	return nullptr;
 }
 
-TypeHandle ilang::findInfinityType(const TypeData &data) noexcept{
-	return data.infinityType;
+/* TODO
+TypeHandle ilang::commonType(TypeHandle type0, TypeHandle type1) noexcept{
+	if(type0 == type1) return type0;
+	else if(type0->base == type1->base) return type0->base;
 }
-
-TypeHandle ilang::findTypeType(const TypeData& data) noexcept{
-	return data.typeType;
-}
-
-TypeHandle ilang::findUnitType(const TypeData &data) noexcept{
-	return data.unitType;
-}
+*/
 
 TypeHandle ilang::findStringType(const TypeData &data, std::optional<StringEncoding> encoding) noexcept{
 	return findInnerType(data, data.stringType, data.encodedStringTypes, encoding);
-}
-
-TypeHandle ilang::findNaturalType(const TypeData &data, std::uint32_t numBits) noexcept{
-	return findInnerNumberType(data, data.naturalType, data.sizedNaturalTypes, numBits);
-}
-
-TypeHandle ilang::findIntegerType(const TypeData &data, std::uint32_t numBits) noexcept{
-	return findInnerNumberType(data, data.integerType, data.sizedIntegerTypes, numBits);
-}
-
-TypeHandle ilang::findRationalType(const TypeData &data, std::uint32_t numBits) noexcept{
-	return findInnerNumberType(data, data.rationalType, data.sizedRationalTypes, numBits);
-}
-
-TypeHandle ilang::findRealType(const TypeData &data, std::uint32_t numBits) noexcept{
-	return findInnerNumberType(data, data.realType, data.sizedRealTypes, numBits);
-}
-
-TypeHandle ilang::findImaginaryType(const TypeData &data, std::uint32_t numBits) noexcept{
-	return findInnerNumberType(data, data.imaginaryType, data.sizedImaginaryTypes, numBits);
-}
-
-TypeHandle ilang::findComplexType(const TypeData &data, std::uint32_t numBits) noexcept{
-	return findInnerNumberType(data, data.complexType, data.sizedComplexTypes, numBits);
-}
-
-TypeHandle ilang::findNumberType(const TypeData &data) noexcept{
-	return data.numberType;
 }
 
 TypeHandle findSumTypeInner(const TypeData &data, const std::vector<TypeHandle> &uniqueSortedInnerTypes) noexcept{
@@ -223,73 +181,8 @@ TypeHandle ilang::findProductType(const TypeData &data, const std::vector<TypeHa
 	return findInnerType(data, nullptr, data.productTypes, std::make_optional(std::ref(innerTypes)));
 }
 
-template<typename Container, typename Key, typename Create>
-TypeResult getInnerType(
-	TypeData &data, TypeHandle base,
-	Container &&container, std::optional<Key> key,
-	Create &&create
-){
-	auto res = findInnerType(data, base, container, key);
-	if(res) return type_result(data, res);
-	else return type_result(data, create(data, *key));
-}
-
-template<typename Container, typename Create>
-TypeResult getInnerNumberType(
-	TypeData &data, TypeHandle base,
-	Container &&container, std::uint32_t numBits,
-	Create &&create
-){
-	return getInnerType(
-		data, base, container,
-		numBits ? std::make_optional(numBits) : std::nullopt,
-		std::forward<Create>(create)
-	);
-}
-
-TypeResult ilang::getInfinityType(TypeData data){
-	return type_result(data, findInfinityType(data));
-}
-
-TypeResult ilang::getTypeType(TypeData data){
-	return type_result(data, findTypeType(data));
-}
-
-TypeResult ilang::getUnitType(TypeData data){
-	return type_result(data, findUnitType(data));
-}
-
-TypeResult ilang::getNaturalType(TypeData data, std::uint32_t numBits){
-	return getInnerNumberType(data, data.naturalType, data.sizedNaturalTypes, numBits, createNaturalType);
-}
-
 TypeResult ilang::getStringType(TypeData data, std::optional<StringEncoding> encoding){
 	return getInnerType(data, data.stringType, data.encodedStringTypes, encoding, createEncodedStringType);
-}
-
-TypeResult ilang::getIntegerType(TypeData data, std::uint32_t numBits){
-	return getInnerNumberType(data, data.integerType, data.sizedIntegerTypes, numBits, createIntegerType);
-}
-
-TypeResult ilang::getRationalType(TypeData data, std::uint32_t numBits){
-	return getInnerNumberType(data, data.rationalType, data.sizedRationalTypes, numBits, createRationalType);
-}
-
-TypeResult ilang::getImaginaryType(TypeData data, std::uint32_t numBits){
-	return getInnerNumberType(data, data.imaginaryType, data.sizedImaginaryTypes, numBits, createImaginaryType);
-}
-
-TypeResult ilang::getRealType(TypeData data, std::uint32_t numBits){
-	return getInnerNumberType(data, data.realType, data.sizedRealTypes, numBits, createRealType);
-}
-
-TypeResult ilang::getComplexType(TypeData data, std::uint32_t numBits){
-	return getInnerNumberType(data, data.complexType, data.sizedComplexTypes, numBits, createComplexType);
-}
-
-//! Get the number type
-TypeResult ilang::getNumberType(TypeData data){
-	return type_result(data, findNumberType(data));
 }
 
 TypeResult ilang::getPartialType(TypeData data){
