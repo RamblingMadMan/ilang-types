@@ -113,6 +113,10 @@ TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled){
 	return nullptr;
 }
 
+TypeHandle ilang::findInfinityType(const TypeData &data) noexcept{
+	return data.infinityType;
+}
+
 TypeHandle ilang::findTypeType(const TypeData& data) noexcept{
 	return data.typeType;
 }
@@ -177,6 +181,10 @@ TypeResult getInnerNumberType(
 		numBits ? std::make_optional(numBits) : std::nullopt,
 		std::forward<Create>(create)
 	);
+}
+
+TypeResult ilang::getInfinityType(TypeData data){
+	return type_result(data, data.infinityType);
 }
 
 TypeResult ilang::getTypeType(TypeData data){
@@ -278,7 +286,7 @@ TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTyp
 }
 
 TypeData::TypeData(){
-	auto newType = [this](auto str, auto mangled, auto base = nullptr){
+	auto newType = [this](auto str, auto mangled, auto base){
 		auto &&ptr = storage.emplace_back(std::make_unique<Type>());
 		ptr->base = base;
 		ptr->str = std::move(str);
@@ -286,10 +294,11 @@ TypeData::TypeData(){
 		return ptr.get();
 	};
 	
-	typeType = newType("Type", "t?", nullptr);
-	unitType = newType("Unit", "u0", nullptr);
-	stringType = newType("String", "s?", nullptr);
-	numberType = newType("Number", "w?", nullptr);
+	infinityType = newType("Infinity", "_?", nullptr);
+	typeType = newType("Type", "t?", infinityType);
+	unitType = newType("Unit", "u0", infinityType);
+	stringType = newType("String", "s?", infinityType);
+	numberType = newType("Number", "w?", infinityType);
 	complexType = newType("Complex", "c?", numberType);
 	realType = newType("Real", "r?", complexType);
 	rationalType = newType("Rational", "q?", realType);

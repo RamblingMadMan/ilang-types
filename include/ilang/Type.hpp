@@ -71,6 +71,7 @@ namespace ilang{
 	struct TypeData{
 		TypeData();
 
+		TypeHandle infinityType;
 		TypeHandle typeType;
 		TypeHandle unitType;
 		TypeHandle stringType;
@@ -108,6 +109,9 @@ namespace ilang{
 	//! Find a type by mangled name
 	TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled);
 	
+	//! Find the infinity type
+	TypeHandle findInfinityType(const TypeData &data) noexcept;
+
 	//! Find the type type
 	TypeHandle findTypeType(const TypeData &data) noexcept;
 	
@@ -144,6 +148,9 @@ namespace ilang{
 	 * \returns Pair of the \ref TypeData and resulting \ref TypeHandle (in that order)
 	 * \{
 	 **/
+
+	//! Get the infinity type
+	TypeResult getInfinityType(TypeData data);
 
 	//! Get the type type
 	TypeResult getTypeType(TypeData data);
