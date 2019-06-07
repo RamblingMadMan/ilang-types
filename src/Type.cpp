@@ -40,20 +40,72 @@ TypeHandle createNaturalType(TypeData &data, std::uint32_t numBits) noexcept{
 }
 
 TypeHandle createIntegerType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.naturalType, "Integer", "i", numBits);
+	return createSizedNumberType(data, data.integerType, "Integer", "z", numBits);
 }
 
 TypeHandle createRationalType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.naturalType, "Rational", "q", numBits);
+	return createSizedNumberType(data, data.rationalType, "Rational", "q", numBits);
 }
 
 TypeHandle createRealType(TypeData &data, std::uint32_t numBits) noexcept{
-	return createSizedNumberType(data, data.naturalType, "Real", "r", numBits);
+	return createSizedNumberType(data, data.realType, "Real", "r", numBits);
+}
+
+TypeHandle createImaginaryType(TypeData &data, std::uint32_t numBits) noexcept{
+	return createSizedNumberType(data, data.imaginaryType, "Imaginary", "i", numBits);
+}
+
+TypeHandle createComplexType(TypeData &data, std::uint32_t numBits) noexcept{
+	return createSizedNumberType(data, data.complexType, "Complex", "c", numBits);
 }
 
 TypeResult type_result(TypeData &data, TypeHandle t) noexcept{
 	std::sort(begin(data.storage), end(data.storage));
 	return {std::move(data), t};
+}
+
+bool ilang::isInfinityType(TypeHandle type) noexcept{
+	return type->mangled == "??";
+}
+
+bool ilang::isTypeType(TypeHandle type) noexcept{
+	return type->mangled == "t?";
+}
+
+bool ilang::isUnitType(TypeHandle type) noexcept{
+	return type->mangled == "u0";
+}
+
+bool ilang::isStringType(TypeHandle type) noexcept{
+	return type->mangled[0] == 's';
+}
+
+bool ilang::isNaturalType(TypeHandle type) noexcept{
+	return type->mangled[0] == 'n';
+}
+
+bool ilang::isIntegerType(TypeHandle type) noexcept{
+	return type->mangled[0] == 'z';
+}
+
+bool ilang::isRationalType(TypeHandle type) noexcept{
+	return type->mangled[0] == 'q';
+}
+
+bool ilang::isRealType(TypeHandle type) noexcept{
+	return type->mangled[0] == 'r';
+}
+
+bool ilang::isImaginaryType(TypeHandle type) noexcept{
+	return type->mangled[0] == 'i';
+}
+
+bool ilang::isComplexType(TypeHandle type) noexcept{
+	return type->mangled[0] == 'c';
+}
+
+bool ilang::isNumberType(TypeHandle type) noexcept{
+	return type->mangled[0] == 'w';
 }
 
 bool ilang::isFunctionType(ilang::TypeHandle type) noexcept{
@@ -145,6 +197,18 @@ TypeHandle ilang::findRealType(const TypeData &data, std::uint32_t numBits) noex
 	return findInnerNumberType(data, data.realType, data.sizedRealTypes, numBits);
 }
 
+TypeHandle ilang::findImaginaryType(const TypeData &data, std::uint32_t numBits) noexcept{
+	return findInnerNumberType(data, data.imaginaryType, data.sizedImaginaryTypes, numBits);
+}
+
+TypeHandle ilang::findComplexType(const TypeData &data, std::uint32_t numBits) noexcept{
+	return findInnerNumberType(data, data.complexType, data.sizedComplexTypes, numBits);
+}
+
+TypeHandle ilang::findNumberType(const TypeData &data) noexcept{
+	return data.numberType;
+}
+
 TypeHandle findSumTypeInner(const TypeData &data, const std::vector<TypeHandle> &uniqueSortedInnerTypes) noexcept{
 	return findInnerType(data, nullptr, data.sumTypes, std::make_optional(std::ref(uniqueSortedInnerTypes)));	
 }
@@ -184,15 +248,15 @@ TypeResult getInnerNumberType(
 }
 
 TypeResult ilang::getInfinityType(TypeData data){
-	return type_result(data, data.infinityType);
+	return type_result(data, findInfinityType(data));
 }
 
 TypeResult ilang::getTypeType(TypeData data){
-	return type_result(data, data.typeType);
+	return type_result(data, findTypeType(data));
 }
 
 TypeResult ilang::getUnitType(TypeData data){
-	return type_result(data, data.unitType);
+	return type_result(data, findUnitType(data));
 }
 
 TypeResult ilang::getNaturalType(TypeData data, std::uint32_t numBits){
@@ -211,8 +275,21 @@ TypeResult ilang::getRationalType(TypeData data, std::uint32_t numBits){
 	return getInnerNumberType(data, data.rationalType, data.sizedRationalTypes, numBits, createRationalType);
 }
 
+TypeResult ilang::getImaginaryType(TypeData data, std::uint32_t numBits){
+	return getInnerNumberType(data, data.imaginaryType, data.sizedImaginaryTypes, numBits, createImaginaryType);
+}
+
 TypeResult ilang::getRealType(TypeData data, std::uint32_t numBits){
 	return getInnerNumberType(data, data.realType, data.sizedRealTypes, numBits, createRealType);
+}
+
+TypeResult ilang::getComplexType(TypeData data, std::uint32_t numBits){
+	return getInnerNumberType(data, data.complexType, data.sizedComplexTypes, numBits, createComplexType);
+}
+
+//! Get the number type
+TypeResult ilang::getNumberType(TypeData data){
+	return type_result(data, findNumberType(data));
 }
 
 TypeResult ilang::getPartialType(TypeData data){
@@ -234,6 +311,7 @@ TypeResult ilang::getSumType(TypeData data, std::vector<TypeHandle> innerTypes){
 	
 	auto &&newType = data.storage.emplace_back(std::make_unique<Type>());
 	
+	newType->base = findInfinityType(data);
 	newType->types = std::move(innerTypes);
 	
 	newType->mangled = "u" + std::to_string(innerTypes.size());
@@ -266,6 +344,7 @@ TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTyp
 	
 	auto &&newType = data.storage.emplace_back(std::make_unique<Type>());
 	
+	newType->base = findInfinityType(data);
 	newType->types = std::move(innerTypes);
 	
 	newType->mangled = "p" + std::to_string(innerTypes.size()) + innerTypes[0]->mangled;
@@ -286,6 +365,14 @@ TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTyp
 }
 
 TypeData::TypeData(){
+	auto newInfinityType = [this](){
+		auto &&ptr = storage.emplace_back(std::make_unique<Type>());
+		ptr->base = ptr.get();
+		ptr->str = "Infinity";
+		ptr->mangled = "??";
+		return ptr.get();
+	};
+
 	auto newType = [this](auto str, auto mangled, auto base){
 		auto &&ptr = storage.emplace_back(std::make_unique<Type>());
 		ptr->base = base;
@@ -294,15 +381,16 @@ TypeData::TypeData(){
 		return ptr.get();
 	};
 	
-	infinityType = newType("Infinity", "_?", nullptr);
+	infinityType = newInfinityType();
 	typeType = newType("Type", "t?", infinityType);
 	unitType = newType("Unit", "u0", infinityType);
 	stringType = newType("String", "s?", infinityType);
 	numberType = newType("Number", "w?", infinityType);
 	complexType = newType("Complex", "c?", numberType);
+	imaginaryType = newType("Imaginary", "i?", complexType);
 	realType = newType("Real", "r?", complexType);
 	rationalType = newType("Rational", "q?", realType);
-	integerType = newType("Integer", "i?", rationalType);
+	integerType = newType("Integer", "z?", rationalType);
 	naturalType = newType("Natural", "n?", integerType);
 	booleanType = newType("Boolean", "b?", naturalType);
 }

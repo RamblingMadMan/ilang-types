@@ -75,17 +75,61 @@ namespace ilang{
 		TypeHandle typeType;
 		TypeHandle unitType;
 		TypeHandle stringType;
-		TypeHandle numberType, complexType, realType, rationalType, integerType, naturalType, booleanType;
+		TypeHandle numberType, complexType, imaginaryType, realType, rationalType, integerType, naturalType, booleanType;
 		std::map<std::uint32_t, TypeHandle> sizedNaturalTypes;
 		std::map<std::uint32_t, TypeHandle> sizedIntegerTypes;
 		std::map<std::uint32_t, TypeHandle> sizedRationalTypes;
+		std::map<std::uint32_t, TypeHandle> sizedImaginaryTypes;
 		std::map<std::uint32_t, TypeHandle> sizedRealTypes;
+		std::map<std::uint32_t, TypeHandle> sizedComplexTypes;
 		std::map<StringEncoding, TypeHandle> encodedStringTypes;
 		std::map<std::vector<TypeHandle>, TypeHandle> sumTypes;
 		std::map<std::vector<TypeHandle>, TypeHandle> productTypes;
 		std::vector<TypeHandle> partialTypes;
 		std::vector<std::unique_ptr<Type>> storage;
 	};
+
+	/**
+	 * \defgroup TypeCheckers Type checking functions
+	 * \brief Functions for checking properties of types
+	 * \{
+	 **/
+
+	//! Check if type is the infinity type
+	bool isInfinityType(TypeHandle type) noexcept;
+
+	//! Check if type is the type type
+	bool isTypeType(TypeHandle type) noexcept;
+
+	//! Check if type is the unit type
+	bool isUnitType(TypeHandle type) noexcept;
+
+	//! Check if type is a string type
+	bool isStringType(TypeHandle type) noexcept;
+
+	//! Check if type is a boolean type
+	bool isBooleanType(TypeHandle type) noexcept;
+
+	//! Check if type is a natural type
+	bool isNaturalType(TypeHandle type) noexcept;
+
+	//! Check if type is an integer type
+	bool isIntegerType(TypeHandle type) noexcept;
+
+	//! Check if type is a rational type
+	bool isRationalType(TypeHandle type) noexcept;
+
+	//! Check if type is a real type
+	bool isRealType(TypeHandle type) noexcept;
+
+	//! Check if type is an imaginary type
+	bool isImaginaryType(TypeHandle type) noexcept;
+
+	//! Check if type is a complex type
+	bool isComplexType(TypeHandle type) noexcept;
+
+	//! Check if type is of number type
+	bool isNumberType(TypeHandle type) noexcept;
 	
 	//! Check if type is a function type
 	bool isFunctionType(TypeHandle type) noexcept;
@@ -93,8 +137,8 @@ namespace ilang{
 	//! Check if type is a partial type
 	bool isPartialType(TypeHandle type) noexcept;
 
-	//! \brief Result type of possibly state modifying type calculations
-	using TypeResult = std::pair<TypeData, TypeHandle>;
+	/** \} */
+
 
 	/**
 	 * \defgroup TypeFinders Type finding functions
@@ -132,6 +176,15 @@ namespace ilang{
 	
 	//! Find a real type
 	TypeHandle findRealType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+
+	//! Find an imaginary type
+	TypeHandle findImaginaryType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+
+	//! Find a complex type
+	TypeHandle findComplexType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+
+	//! Find the number type
+	TypeHandle findNumberType(const TypeData &data) noexcept;
 	
 	//! Find a sum type
 	TypeHandle findSumType(const TypeData &data, std::vector<TypeHandle> innerTypes) noexcept;
@@ -148,6 +201,9 @@ namespace ilang{
 	 * \returns Pair of the \ref TypeData and resulting \ref TypeHandle (in that order)
 	 * \{
 	 **/
+
+	//! \brief Result type of possibly state modifying type calculations
+	using TypeResult = std::pair<TypeData, TypeHandle>;
 
 	//! Get the infinity type
 	TypeResult getInfinityType(TypeData data);
@@ -170,8 +226,17 @@ namespace ilang{
 	//! Get a rational type
 	TypeResult getRationalType(TypeData data, std::uint32_t numBits = 0);
 	
+	//! Get an imaginary type
+	TypeResult getImaginaryType(TypeData data, std::uint32_t numBits = 0);
+
 	//! Get a real type
 	TypeResult getRealType(TypeData data, std::uint32_t numBits = 0);
+
+	//! Get a complex type
+	TypeResult getComplexType(TypeData data, std::uint32_t numBits = 0);
+
+	//! Get the number type
+	TypeResult getNumberType(TypeData data);
 	
 	//! Get a unique incomplete type (used for unresolved expressions and partial typing)
 	TypeResult getPartialType(TypeData data);
