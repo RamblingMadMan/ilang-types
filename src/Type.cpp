@@ -108,6 +108,7 @@ BASE_TYPE(Number, number, "w?")
 
 NUMBER_VALUE_TYPE(Boolean, boolean, "b")
 NUMBER_VALUE_TYPE(Natural, natural, "n")
+NUMBER_VALUE_TYPE(Integer, integer, "z")
 NUMBER_VALUE_TYPE(Rational, rational, "q")
 NUMBER_VALUE_TYPE(Real, real, "r")
 NUMBER_VALUE_TYPE(Imaginary, imaginary, "i")
