@@ -17,7 +17,7 @@ This recursively-defined type is named the `Infinity` type and all types are bas
 
 ### `Infinity`
 
-`Infinity` is recursively defined as the base type of itself and is named so because it stands for the type of the infinite set containing every possible value known and unknown to man. We can not actually create an instance of this type (for obvious reasons) but we can refine it to get groups of values within it e.g. the `Complex` or `Rational` numbers.
+`Infinity` is recursively defined as the base type of itself and is named so because it stands for the the infinite set containing every possible value known and unknown to man. We can not actually create an instance of this type (for obvious reasons) but we can refine it to get groups of values within it e.g. the `Complex` or `Rational` numbers.
 
 ## Base Types
 
