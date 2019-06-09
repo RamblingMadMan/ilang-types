@@ -7,14 +7,17 @@ One side-effect of this is that there are no concrete fixed-width types. That is
 
 This can usually be treated as an implementation detail. E.g. on a system with no support for 16-bit integers, `Int16` might be represented by the C type `int32_t` but on other (more traditional) systems it would more probably be represented by `int16_t`.
 
-## The `Infinity` Type
+## Defining a Type
 
-The `Infinity` type is the base for all types in Infinity Lang.
+When creating types, we can think of the process as restricting the range of values of some other type. This concept applies to all types in the system, so there must be some type that can represent *every* value. This is explicitly *every* value and not just *any* value; an instance of this type would hold every single possible value (not just any single one of them) including itself.
 
-When creating more specialized types, we can think of the process as restricting the range of values of some other type.
-This concept applies to every type in the system, so there must be some type that can represent *every* value. This is where the `Infinity` type comes in to play. It is a recursively defined type (using itself as it's base type) that represents any possible value (existing or not). We refine this type further to get sub-groups of values e.g. the `Complex` or `Rational` numbers.
+This recursively-defined type is named the `Infinity` type and all types are based on it at the lowest level.
 
 ![Diagram of base types and their bases](base-diagram.png)
+
+### `Infinity`
+
+`Infinity` is recursively defined as the base type of itself and is named so because it stands for the type of the infinite set containing every possible value known and unknown to man. We can not actually create an instance of this type (for obvious reasons) but we can refine it to get groups of values within it e.g. the `Complex` or `Rational` numbers.
 
 ## Base Types
 
