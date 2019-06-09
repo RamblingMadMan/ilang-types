@@ -9,15 +9,17 @@ This can usually be treated as an implementation detail. E.g. on a system with n
 
 ## Defining a Type
 
-When creating types, we can think of the process as restricting the range of values of some other type. This concept applies to all types in the system, so there must be some type that can represent *every* value. This is explicitly *every* value and not just *any* value; an instance of this type would hold every single possible value (not just any single one of them) including itself.
+We can think of a type as a restriction on the range of values of some other type. This concept applies to all types in the system, so there must be some type that can represent *every* value.
 
-This recursively-defined type is named the `Infinity` type and all types are based on it at the lowest level.
+> This is explicitly *every* value and not just *any* value; an instance of this type would hold every single possible value (not just any single one of them) including itself.
+
+This type is named the `Infinity` type and all types are based on it at the lowest level.
 
 ![Diagram of base types and their bases](base-diagram.png)
 
 ### `Infinity`
 
-`Infinity` is recursively defined as the base type of itself and is named so because it stands for the the infinite set containing every possible value known (and unknown) to man. We can not actually create a value of this type (for obvious reasons) but we can refine it to get sub-groups of values e.g. the `Complex` or `Rational` numbers.
+`Infinity` is recursively defined as the refined type of itself and is named so because it stands for the the infinite set containing every possible value known (and unknown) to man. We can not actually create a value of this type (for obvious reasons) but we can refine it to get sub-groups of values e.g. the `Complex` or `Rational` numbers.
 
 ### Root Types
 
@@ -84,5 +86,4 @@ Type promotion may only occur from a more refined type to it's base. No lossy co
 
 ## Type Conversion
 
-This is the process of converting a value from one group to a non-related group
-
+This is the process of converting a value from one group to a non-related group.
