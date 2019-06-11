@@ -7,6 +7,23 @@ One side-effect of this is that there are no concrete fixed-width types. That is
 
 This can usually be treated as an implementation detail. E.g. on a system with no support for 16-bit integers, `Int16` may be represented by the C type `int32_t` but on other (more traditional) systems it would more probably be represented by `int16_t`.
 
+## Building
+
+Required dependencies:
+
+- CMake
+- A C++17 Compiler
+
+To save you the scrolling, the following commands should be used to build the system:
+
+```bash
+mkdir build && cd build
+cmake ..
+cmake --build .
+```
+
+
+
 ## Defining a Type
 
 We can think of a type as a restriction on the range of values of some other type. This concept applies to all types in the system, so there must be some type that can represent *every* value.

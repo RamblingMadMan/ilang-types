@@ -35,6 +35,31 @@ TypeHandle createSizedNumberType(
 	return data.storage.emplace_back(std::move(type)).get();
 }
 
+TypeHandle createFunctionType(
+	TypeData &data,
+	const std::vector<TypeHandle> &params, TypeHandle ret
+) noexcept
+{
+	auto type = std::make_unique<Type>();
+
+	type->base = data.functionType;
+	type->str = params[0]->str;
+	type->mangled = "f" + std::to_string(params.size()) + ret->mangled + params[0]->mangled;
+
+	for(std::size_t i = 1; i < params.size(); i++){
+		type->str += " -> " + params[i]->str;
+		type->mangled += params[i]->mangled;
+	}
+	
+	type->str += " -> " + ret->str;
+
+	type->types.reserve(params.size() + 1);
+	type->types.insert(begin(type->types), begin(params), end(params));
+	type->types.emplace_back(ret);
+
+	return data.storage.emplace_back(std::move(type)).get();
+}
+
 TypeResult type_result(TypeData &data, TypeHandle t) noexcept{
 	std::sort(begin(data.storage), end(data.storage));
 	return {std::move(data), t};
@@ -82,6 +107,45 @@ TypeResult getInnerNumberType(
 	);
 }
 
+bool impl_isInfinityType(TypeHandle type) noexcept{
+	return type->mangled == "??";
+}
+
+bool ilang::hasBaseType(TypeHandle type, TypeHandle baseType) noexcept{
+	while(1){
+		if(impl_isInfinityType(baseType) || type->base == baseType)
+			return true;
+		else if(impl_isInfinityType(type->base))
+			return false;
+		else
+			type = type->base;
+	}
+}
+
+bool ilang::isRootType(TypeHandle type) noexcept{ return impl_isInfinityType(type->base); }
+bool ilang::isRefinedType(TypeHandle type) noexcept{ return isRootType(type->base) || isRefinedType(type->base); }
+bool ilang::isCompoundType(TypeHandle type) noexcept;
+
+#define REFINED_TYPE_CHECK(type, typeLower)\
+bool ilang::is##type##Type(TypeHandle type, const TypeData &data) noexcept{\
+	auto baseType = data.typeLower##Type;\
+	return type == baseType || hasBaseType(type, baseType);\
+}
+
+REFINED_TYPE_CHECK(Unit, unit)
+REFINED_TYPE_CHECK(Type, type)
+REFINED_TYPE_CHECK(Partial, partial)
+REFINED_TYPE_CHECK(Function, function)
+REFINED_TYPE_CHECK(Number, number)
+REFINED_TYPE_CHECK(Complex, complex)
+REFINED_TYPE_CHECK(Imaginary, imaginary)
+REFINED_TYPE_CHECK(Real, real)
+REFINED_TYPE_CHECK(Rational, rational)
+REFINED_TYPE_CHECK(Integer, integer)
+REFINED_TYPE_CHECK(Natural, natural)
+REFINED_TYPE_CHECK(Boolean, boolean)
+REFINED_TYPE_CHECK(String, string)
+
 #define NUMBER_VALUE_TYPE(T, t, mangledSig)\
 TypeHandle create##T##Type(TypeData &data, std::uint32_t numBits){\
 	return createSizedNumberType(data, data.t##Type, #T, mangledSig, numBits);\
@@ -91,20 +155,16 @@ TypeHandle ilang::find##T##Type(const TypeData &data, std::uint32_t numBits) noe
 }\
 TypeResult ilang::get##T##Type(TypeData data, std::uint32_t numBits){\
 	return getInnerNumberType(data, data.t##Type, data.sized##T##Types, numBits, create##T##Type);\
-}\
-bool ilang::is##T##Type(TypeHandle type) noexcept{\
-	return std::string_view(type->mangled).substr(0, 1) == mangledSig;\
 }
 
-#define BASE_TYPE(T, t, mangledStr)\
+#define ROOT_TYPE(T, t)\
 TypeHandle ilang::find##T##Type(const TypeData &data) noexcept{ return data.t##Type; }\
-TypeResult ilang::get##T##Type(TypeData data){ return type_result(data, data.t##Type); }\
-bool ilang::is##T##Type(TypeHandle type) noexcept{ return type->mangled == mangledStr; }
+TypeResult ilang::get##T##Type(TypeData data){ return type_result(data, data.t##Type); }
 
-BASE_TYPE(Infinity, infinity, "??")
-BASE_TYPE(Type, type, "t0")
-BASE_TYPE(Unit, unit, "u0")
-BASE_TYPE(Number, number, "w?")
+ROOT_TYPE(Infinity, infinity)
+ROOT_TYPE(Type, type)
+ROOT_TYPE(Unit, unit)
+ROOT_TYPE(Number, number)
 
 NUMBER_VALUE_TYPE(Boolean, boolean, "b")
 NUMBER_VALUE_TYPE(Natural, natural, "n")
@@ -113,18 +173,6 @@ NUMBER_VALUE_TYPE(Rational, rational, "q")
 NUMBER_VALUE_TYPE(Real, real, "r")
 NUMBER_VALUE_TYPE(Imaginary, imaginary, "i")
 NUMBER_VALUE_TYPE(Complex, complex, "c")
-
-bool ilang::isStringType(TypeHandle type) noexcept{
-	return type->mangled[0] == 's';
-}
-
-bool ilang::isFunctionType(ilang::TypeHandle type) noexcept{
-	return type->mangled[0] == 'f';
-}
-
-bool ilang::isPartialType(TypeHandle type) noexcept{
-	return type->mangled[0] == '_';
-}
 
 template<typename Comp>
 auto getSortedTypes(const TypeData &data, Comp &&comp = std::less<void>{}){
@@ -164,6 +212,18 @@ TypeHandle ilang::commonType(TypeHandle type0, TypeHandle type1) noexcept{
 }
 */
 
+TypeHandle ilang::findPartialType(const TypeData &data, std::optional<std::uint32_t> id) noexcept{
+	if(!id)
+		return data.partialType;
+
+	auto num = *id;
+
+	if(data.partialTypes.size() >= num)
+		return nullptr;
+	else
+		return data.partialTypes[num];
+}
+
 TypeHandle ilang::findStringType(const TypeData &data, std::optional<StringEncoding> encoding) noexcept{
 	return findInnerType(data, data.stringType, data.encodedStringTypes, encoding);
 }
@@ -182,6 +242,19 @@ TypeHandle ilang::findProductType(const TypeData &data, const std::vector<TypeHa
 	return findInnerType(data, nullptr, data.productTypes, std::make_optional(std::ref(innerTypes)));
 }
 
+TypeHandle ilang::findFunctionType(const TypeData &data, const std::vector<TypeHandle> &params, TypeHandle result) noexcept{
+	auto paramsRes = data.functionTypes.find(params);
+	if(paramsRes != end(data.functionTypes)){
+		auto resultRes = paramsRes->second.find(result);
+		if(resultRes != end(paramsRes->second))
+			return resultRes->second;
+	}
+
+	return nullptr;
+}
+
+TypeHandle ilang::findFunctionType(const TypeData &data) noexcept{ return data.functionType; }
+
 TypeResult ilang::getStringType(TypeData data, std::optional<StringEncoding> encoding){
 	return getInnerType(data, data.stringType, data.encodedStringTypes, encoding, createEncodedStringType);
 }
@@ -189,7 +262,8 @@ TypeResult ilang::getStringType(TypeData data, std::optional<StringEncoding> enc
 TypeResult ilang::getPartialType(TypeData data){
 	auto type = std::make_unique<Type>();
 	auto id = std::to_string(data.partialTypes.size());
-	type->str = "Unique" + id;
+	type->base = data.partialType;
+	type->str = "Partial" + id;
 	type->mangled = "_" + id;
 	auto &&typePtr = data.storage.emplace_back(std::move(type));
 	return type_result(data, typePtr.get());
@@ -258,6 +332,16 @@ TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTyp
 	return type_result(data, newType.get());
 }
 
+TypeResult ilang::getFunctionType(TypeData data, std::vector<TypeHandle> params, TypeHandle result){
+	auto &&retMap = data.functionTypes[params];
+
+	auto res = retMap.find(result);
+	if(res != end(retMap))
+		return type_result(data, res->second);
+
+	return type_result(data, retMap[result] = createFunctionType(data, params, result));
+}
+
 TypeData::TypeData(){
 	auto newInfinityType = [this](){
 		auto &&ptr = storage.emplace_back(std::make_unique<Type>());
@@ -274,12 +358,20 @@ TypeData::TypeData(){
 		ptr->mangled = std::move(mangled);
 		return ptr.get();
 	};
-	
+
 	infinityType = newInfinityType();
-	typeType = newType("Type", "t?", infinityType);
-	unitType = newType("Unit", "u0", infinityType);
-	stringType = newType("String", "s?", infinityType);
-	numberType = newType("Number", "w?", infinityType);
+
+	auto newRootType = [&newType, this](auto str, auto mangled){
+		return newType(str, mangled, infinityType);
+	};
+	
+	partialType = newRootType("Partial", "_?");
+	typeType = newRootType("Type", "t?");
+	unitType = newRootType("Unit", "u0");
+	stringType = newRootType("String", "s?");
+	numberType = newRootType("Number", "w?");
+	functionType = newRootType("Function", "f?");
+
 	complexType = newType("Complex", "c?", numberType);
 	imaginaryType = newType("Imaginary", "i?", complexType);
 	realType = newType("Real", "r?", complexType);

@@ -72,10 +72,12 @@ namespace ilang{
 		TypeData();
 
 		TypeHandle infinityType;
+		TypeHandle partialType;
 		TypeHandle typeType;
 		TypeHandle unitType;
 		TypeHandle stringType;
 		TypeHandle numberType, complexType, imaginaryType, realType, rationalType, integerType, naturalType, booleanType;
+		TypeHandle functionType;
 		std::map<std::uint32_t, TypeHandle> sizedBooleanTypes;
 		std::map<std::uint32_t, TypeHandle> sizedNaturalTypes;
 		std::map<std::uint32_t, TypeHandle> sizedIntegerTypes;
@@ -84,6 +86,7 @@ namespace ilang{
 		std::map<std::uint32_t, TypeHandle> sizedRealTypes;
 		std::map<std::uint32_t, TypeHandle> sizedComplexTypes;
 		std::map<StringEncoding, TypeHandle> encodedStringTypes;
+		std::map<std::vector<TypeHandle>, std::map<TypeHandle, TypeHandle>> functionTypes;
 		std::map<std::vector<TypeHandle>, TypeHandle> sumTypes;
 		std::map<std::vector<TypeHandle>, TypeHandle> productTypes;
 		std::vector<TypeHandle> partialTypes;
@@ -91,55 +94,50 @@ namespace ilang{
 	};
 
 	/**
-	 * \defgroup TypeCheckers Type checking functions
-	 * \brief Functions for checking properties of types
+	 * \defgroup RefinementCheckers Type refinement checking
+	 * \brief Functions for checking refinement of types
 	 * \{
 	 **/
 
-	//! Check if type is the infinity type
-	bool isInfinityType(TypeHandle type) noexcept;
+	bool hasBaseType(TypeHandle type, TypeHandle baseType) noexcept;
 
-	//! Check if type is the type type
-	bool isTypeType(TypeHandle type) noexcept;
-
-	//! Check if type is the unit type
-	bool isUnitType(TypeHandle type) noexcept;
-
-	//! Check if type is a string type
-	bool isStringType(TypeHandle type) noexcept;
-
-	//! Check if type is a boolean type
-	bool isBooleanType(TypeHandle type) noexcept;
-
-	//! Check if type is a natural type
-	bool isNaturalType(TypeHandle type) noexcept;
-
-	//! Check if type is an integer type
-	bool isIntegerType(TypeHandle type) noexcept;
-
-	//! Check if type is a rational type
-	bool isRationalType(TypeHandle type) noexcept;
-
-	//! Check if type is a real type
-	bool isRealType(TypeHandle type) noexcept;
-
-	//! Check if type is an imaginary type
-	bool isImaginaryType(TypeHandle type) noexcept;
-
-	//! Check if type is a complex type
-	bool isComplexType(TypeHandle type) noexcept;
-
-	//! Check if type is of number type
-	bool isNumberType(TypeHandle type) noexcept;
-	
-	//! Check if type is a function type
-	bool isFunctionType(TypeHandle type) noexcept;
-	
-	//! Check if type is a partial type
-	bool isPartialType(TypeHandle type) noexcept;
+	bool isRootType(TypeHandle type) noexcept;
+	bool isRefinedType(TypeHandle type) noexcept;
+	bool isValueType(TypeHandle type) noexcept;
+	bool isCompoundType(TypeHandle type) noexcept;
 
 	/** \} */
 
+	/**
+	 * \defgroup RootTypeCheckers Root type checking
+	 * \brief Functions for checking root types
+	 * \{
+	 **/
+
+	bool isUnitType(TypeHandle type, const TypeData &data) noexcept;
+	bool isTypeType(TypeHandle type, const TypeData &data) noexcept;
+	bool isPartialType(TypeHandle type, const TypeData &data) noexcept;
+	bool isFunctionType(TypeHandle type, const TypeData &data) noexcept;
+	bool isNumberType(TypeHandle type, const TypeData &data) noexcept;
+	bool isStringType(TypeHandle type, const TypeData &data) noexcept;
+
+	/** \} */
+
+	/**
+	 * \defgroup NumberTypeCheckers Number type checking
+	 * \brief Functions for checking numeric types
+	 * \{
+	 **/
+
+	bool isComplexType(TypeHandle type, const TypeData &data) noexcept;
+	bool isImaginaryType(TypeHandle type, const TypeData &data) noexcept;
+	bool isRealType(TypeHandle type, const TypeData &data) noexcept;
+	bool isRationalType(TypeHandle type, const TypeData &data) noexcept;
+	bool isIntegerType(TypeHandle type, const TypeData &data) noexcept;
+	bool isNaturalType(TypeHandle type, const TypeData &data) noexcept;
+	bool isBooleanType(TypeHandle type, const TypeData &data) noexcept;
+
+	/** \} */
 
 	/**
 	 * \defgroup TypeFinders Type finding functions
@@ -165,6 +163,9 @@ namespace ilang{
 	
 	//! Find the unit type
 	TypeHandle findUnitType(const TypeData &data) noexcept;
+
+	//! Find a partial type
+	TypeHandle findPartialType(const TypeData &data, std::optional<std::uint32_t> id = std::nullopt) noexcept;
 
 	//! Find a string type
 	TypeHandle findStringType(const TypeData &data, std::optional<StringEncoding> encoding = std::nullopt) noexcept;
@@ -198,6 +199,12 @@ namespace ilang{
 	
 	//! Find a product type
 	TypeHandle findProductType(const TypeData &data, const std::vector<TypeHandle> &innerTypes) noexcept;
+
+	//! Find function base type
+	TypeHandle findFunctionType(const TypeData &data) noexcept;
+
+	//! Find a function type
+	TypeHandle findFunctionType(const TypeData &data, const std::vector<TypeHandle> &params, TypeHandle result) noexcept;
 	
 	/** \} */
 
@@ -248,24 +255,19 @@ namespace ilang{
 	//! Get the number type
 	TypeResult getNumberType(TypeData data);
 	
-	//! Get a unique incomplete type (used for unresolved expressions and partial typing)
+	//! Get a unique partial (incomplete) type
 	TypeResult getPartialType(TypeData data);
+
+	//! Get a function type
+	TypeResult getFunctionType(TypeData data, std::vector<TypeHandle> args, TypeHandle ret);
 	
 	//! Get a sum type
-	TypeResult getSumType(TypeData data, std::vector<TypeHandle> innerTypes);
+	TypeResult getSumType(TypeData data, std::vector<TypeHandle> innerTypes = {});
 
 	//! Get a product type
-	TypeResult getProductType(TypeData data, std::vector<TypeHandle> innerTypes);
+	TypeResult getProductType(TypeData data, std::vector<TypeHandle> innerTypes = {});
 	
 	/** \} */
-}
-
-// comparing type data structures
-// WARNING: This is almost never what you want
-//     type comparisons should almost always
-//     be done with TypeHandle's
-inline bool operator==(const ilang::Type &lhs, const ilang::Type &rhs){
-	return (lhs.base == rhs.base) && (lhs.mangled == rhs.mangled);
 }
 
 #endif // !ILANG_TYPE_HPP
