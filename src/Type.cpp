@@ -112,8 +112,11 @@ bool impl_isInfinityType(TypeHandle type) noexcept{
 }
 
 bool ilang::hasBaseType(TypeHandle type, TypeHandle baseType) noexcept{
+	if(impl_isInfinityType(baseType))
+		return true;
+	
 	while(1){
-		if(impl_isInfinityType(baseType) || type->base == baseType)
+		if(type->base == baseType)
 			return true;
 		else if(impl_isInfinityType(type->base))
 			return false;
@@ -122,8 +125,16 @@ bool ilang::hasBaseType(TypeHandle type, TypeHandle baseType) noexcept{
 	}
 }
 
-bool ilang::isRootType(TypeHandle type) noexcept{ return impl_isInfinityType(type->base); }
-bool ilang::isRefinedType(TypeHandle type) noexcept{ return isRootType(type->base) || isRefinedType(type->base); }
+bool ilang::isRootType(TypeHandle type) noexcept{ return impl_isInfinityType(type->base) && !impl_isInfinityType(type); }
+
+bool ilang::isRefinedType(TypeHandle type) noexcept{
+	if(isRootType(type->base))
+		return true;
+	else if(impl_isInfinityType(type->base))
+		return false;
+	
+	return isRefinedType(type->base);
+}
 bool ilang::isCompoundType(TypeHandle type) noexcept;
 
 #define REFINED_TYPE_CHECK(type, typeLower)\
@@ -187,7 +198,7 @@ auto getSortedTypes(const TypeData &data, Comp &&comp = std::less<void>{}){
 	return types;
 }
 
-TypeHandle findTypeByString(const TypeData &data, std::string_view str){
+TypeHandle ilang::findTypeByString(const TypeData &data, std::string_view str){
 	auto types = getSortedTypes(data, [](auto lhs, auto rhs){ return lhs->str < rhs->str; });
 	auto res = std::lower_bound(begin(types), end(types), str, [](TypeHandle lhs, auto rhs){ return lhs->str < rhs; });
 	if(res != end(types))
@@ -196,7 +207,7 @@ TypeHandle findTypeByString(const TypeData &data, std::string_view str){
 	return nullptr;
 }
 
-TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled){
+TypeHandle ilang::findTypeByMangled(const TypeData &data, std::string_view mangled){
 	auto types = getSortedTypes(data, [](auto lhs, auto rhs){ return lhs->mangled < rhs->mangled; });
 	auto res = std::lower_bound(begin(types), end(types), mangled, [](TypeHandle lhs, auto rhs){ return lhs->mangled < rhs; });
 	if(res != end(types))
@@ -205,12 +216,11 @@ TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled){
 	return nullptr;
 }
 
-/* TODO
-TypeHandle ilang::commonType(TypeHandle type0, TypeHandle type1) noexcept{
-	if(type0 == type1) return type0;
-	else if(type0->base == type1->base) return type0->base;
+TypeHandle ilang::findCommonType(TypeHandle type0, TypeHandle type1) noexcept{
+	if(type0 == type1 || hasBaseType(type1, type0)) return type0;
+	else if(hasBaseType(type0, type1)) return type1;
+	else return findCommonType(type0->base, type1->base);
 }
-*/
 
 TypeHandle ilang::findPartialType(const TypeData &data, std::optional<std::uint32_t> id) noexcept{
 	if(!id)

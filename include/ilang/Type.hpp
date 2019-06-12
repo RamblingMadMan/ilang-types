@@ -152,8 +152,8 @@ namespace ilang{
 	//! Find a type by mangled name
 	TypeHandle findTypeByMangled(const TypeData &data, std::string_view mangled);
 
-	// TODO: Find the most-refined common type
-	// TypeHandle commonType(TypeHandle type0, TypeHandle type1) noexcept;
+	//! Find the most-refined common type
+	TypeHandle findCommonType(TypeHandle type0, TypeHandle type1) noexcept;
 	
 	//! Find the infinity type
 	TypeHandle findInfinityType(const TypeData &data) noexcept;
