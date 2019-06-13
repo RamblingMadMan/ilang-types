@@ -135,7 +135,31 @@ bool ilang::isRefinedType(TypeHandle type) noexcept{
 	
 	return isRefinedType(type->base);
 }
+
 bool ilang::isCompoundType(TypeHandle type) noexcept;
+
+bool ilang::isListType(TypeHandle type, const TypeData &data) noexcept{
+	if(type->types.size() != 1)
+		return false;
+	
+	auto listBase = findListType(data, type->types[0]);
+	if(!listBase)
+		return false;
+	
+	return hasBaseType(type, listBase);
+}
+
+bool ilang::isArrayType(TypeHandle type, const TypeData& data) noexcept{
+	if(type->types.size() != 1)
+		return false;
+	
+	auto arrayBase = findArrayType(data, type->types[0]);
+	if(!arrayBase)
+		return false;
+	
+	return hasBaseType(type, arrayBase);
+}
+
 
 #define REFINED_TYPE_CHECK(type, typeLower)\
 bool ilang::is##type##Type(TypeHandle type, const TypeData &data) noexcept{\
@@ -238,6 +262,30 @@ TypeHandle ilang::findStringType(const TypeData &data, std::optional<StringEncod
 	return findInnerType(data, data.stringType, data.encodedStringTypes, encoding);
 }
 
+TypeHandle ilang::findTreeType(const TypeData &data, TypeHandle t) noexcept{
+	return findInnerType(data, nullptr, data.treeTypes, std::make_optional(t));
+}
+
+TypeHandle ilang::findListType(const TypeData &data, TypeHandle t) noexcept{
+	return findInnerType(data, nullptr, data.listTypes, std::make_optional(t));
+}
+
+TypeHandle ilang::findArrayType(const TypeData &data, TypeHandle t) noexcept{
+	return findInnerType(data, nullptr, data.arrayTypes, std::make_optional(t));
+}
+
+TypeHandle ilang::findDynamicArrayType(const TypeData &data, TypeHandle t) noexcept{
+	return findInnerType(data, nullptr, data.listTypes, std::make_optional(t));
+}
+
+TypeHandle ilang::findStaticArrayType(const TypeData &data, TypeHandle t, std::size_t n) noexcept{
+	auto res = data.staticArrayTypes.find(t);
+	if(res != end(data.staticArrayTypes))
+		return findInnerType(data, nullptr, res->second, std::make_optional(n));
+	
+	return nullptr;
+}
+
 TypeHandle findSumTypeInner(const TypeData &data, const std::vector<TypeHandle> &uniqueSortedInnerTypes) noexcept{
 	return findInnerType(data, nullptr, data.sumTypes, std::make_optional(std::ref(uniqueSortedInnerTypes)));	
 }
@@ -267,6 +315,96 @@ TypeHandle ilang::findFunctionType(const TypeData &data) noexcept{ return data.f
 
 TypeResult ilang::getStringType(TypeData data, std::optional<StringEncoding> encoding){
 	return getInnerType(data, data.stringType, data.encodedStringTypes, encoding, createEncodedStringType);
+}
+
+TypeResult ilang::getTreeType(TypeData data, TypeHandle t){
+	if(auto res = findTreeType(data, t))
+		return type_result(data, res);
+	
+	auto ptr = data.storage.emplace_back(std::make_unique<Type>()).get();
+	
+	ptr->base = data.infinityType;
+	ptr->str = "(Tree " + t->str + ")";
+	ptr->mangled = "ot0" + t->mangled;
+	ptr->types = {t};
+	
+	data.treeTypes[t] = ptr;
+	
+	return type_result(data, ptr);
+}
+
+TypeResult ilang::getListType(TypeData data, TypeHandle t){
+	if(auto res = findListType(data, t))
+		return type_result(data, res);
+	
+	auto newType = std::make_unique<Type>();
+	
+	std::tie(data, newType->base) = getTreeType(std::move(data), t);
+	newType->str = "(List " + t->str + ")";
+	newType->mangled = "ol0" + t->mangled;
+	newType->types = {t};
+	
+	auto ptr = data.storage.emplace_back(std::move(newType)).get();
+	
+	data.listTypes[t] = ptr;
+	
+	return type_result(data, ptr);
+}
+
+TypeResult ilang::getArrayType(TypeData data, TypeHandle t){
+	if(auto res = findArrayType(data, t))
+		return type_result(data, res);
+	
+	auto newType = std::make_unique<Type>();
+	
+	std::tie(data, newType->base) = getListType(std::move(data), t);
+	newType->str = "(Array " + t->str + ")";
+	newType->mangled = "oa0" + t->mangled;
+	newType->types = {t};
+	
+	auto ptr = data.storage.emplace_back(std::move(newType)).get();
+	
+	data.arrayTypes[t] = ptr;
+	
+	return type_result(data, ptr);
+}
+
+TypeResult ilang::getDynamicArrayType(TypeData data, TypeHandle t){
+	if(auto res = findDynamicArrayType(data, t))
+		return type_result(data, res);
+	
+	auto newType = std::make_unique<Type>();
+	
+	std::tie(data, newType->base) = getArrayType(std::move(data), t);
+	newType->str = "(DynamicArray " + t->str + ")";
+	newType->mangled = "a0" + t->mangled;
+	newType->types = {t};
+	
+	auto ptr = data.storage.emplace_back(std::move(newType)).get();
+	
+	data.dynamicArrayTypes[t] = ptr;
+	
+	return type_result(data, ptr);
+}
+
+TypeResult ilang::getStaticArrayType(TypeData data, TypeHandle t, std::size_t n){
+	if(auto res = findStaticArrayType(data, t, n))
+		return type_result(data, res);
+	
+	auto newType = std::make_unique<Type>();
+	
+	auto nStr = std::to_string(n);
+	
+	std::tie(data, newType->base) = getArrayType(std::move(data), t);
+	newType->str = "(StaticArray " + t->str + " " + nStr + ")";
+	newType->mangled = "a" + nStr + t->mangled;
+	newType->types = {t};
+	
+	auto ptr = data.storage.emplace_back(std::move(newType)).get();
+	
+	data.staticArrayTypes[t][n] = ptr;
+	
+	return type_result(data, ptr);
 }
 
 TypeResult ilang::getPartialType(TypeData data){

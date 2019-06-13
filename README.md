@@ -44,12 +44,12 @@ A root type is any type directly refined from `Infinity`. They are used as the b
 
 Common root types:
 
-| Description                 | Root Type |
-| --------------------------- | --------- |
-| An atomic mathematical unit | `Number`  |
-| A string of characters      | `String`  |
-| Mapping from keys to values | `Map K T` |
-| A list of values of `T`     | `List T`  |
+| Description                    | Root Type |
+| ------------------------------ | --------- |
+| An atomic mathematical unit    | `Number`  |
+| A string of characters         | `String`  |
+| Mapping from keys to values    | `Map K T` |
+| A tree with node values of `T` | `Tree T`  |
 
 ### Refined Types
 
@@ -57,16 +57,16 @@ A refined type is any type based on a root type or other refined type that can n
 
 Here is a list of common refined types:
 
-| Description                                  | Refined Type | Base       | Example Implementation     |
-| -------------------------------------------- | ------------ | ---------- | -------------------------- |
-| A tree structure with nodes of `T`           | `Tree T`     | `List T`   | N/A                        |
-| A contiguously laid out series of `T` values | `Array T`    | `List T`   | N/A                        |
-| Complex numbers                              | `Complex`    | `Number`   | C `_Complex` type          |
-| Imaginary numbers                            | `Imaginary`  | `Complex`  | C `_Imaginary` type        |
-| Real numbers                                 | `Real`       | `Complex`  | C `float` or `double` type |
-| Rational Real numbers                        | `Rational`   | `Real`     | Pair of an `Integer` type  |
-| Whole numbers                                | `Integer`    | `Rational` | C `int32_t` type           |
-| Counting numbers                             | `Natural`    | `Integer`  | C `uint32_t` type          |
+| Description                                  | Refined Type | Base       | C/C++ Type analogue          |
+| -------------------------------------------- | ------------ | ---------- | ---------------------------- |
+| A linear list of values of `T`               | `List T`     | `Tree T`   | N/A                          |
+| A contiguously laid out series of `T` values | `Array T`    | `List T`   | N/A                          |
+| Complex numbers                              | `Complex`    | `Number`   | `std::pair<Real, Imaginary>` |
+| Imaginary numbers                            | `Imaginary`  | `Complex`  | [`_Imaginary Real`](https://en.cppreference.com/w/c/language/arithmetic_types#Imaginary_floating_types)            |
+| Real numbers                                 | `Real`       | `Complex`  | `float` or `double`          |
+| Rational Real numbers                        | `Rational`   | `Real`     | `std::pair<Integer>`         |
+| Whole numbers                                | `Integer`    | `Rational` | `int`                        |
+| Counting numbers                             | `Natural`    | `Integer`  | `unsigned int`               |
 
 
 ### Value Types
@@ -77,25 +77,26 @@ Here is a list of commonly used value types:
 
 > In this list, wherever a type is suffixed by an uppercase `N`, `N` stands for some desired bit-width.
 
-| Value Type  | Base Type  | Value Syntax                           | Possible C/C++ Type                |
-| ----------- | ---------- | -------------------------------------- | ---------------------------------- |
-| `NaturalN`  | `Natural`  | `0`, `1`, `2`, `3`, ...                | `uintN_t`                          |
-| `IntegerN`  | `Integer`  | `1`, `0`, `-1`, `-2`, ...              | `intN_t`                           |
-| `RationalN` | `Rational` | `1/3`, `2/7`, `6/21`, ...              | `div_t`, `ldiv_t`, etc.            |
-| `RealN`     | `Real`     | `0.1`, `1.1111`, `69.420`, `9001`, ... | `float`, `double` or `long double` |
+| Value Type        | Base Type  | Value Syntax                           | C/C++ Type analogue                |
+| ----------------- | ---------- | -------------------------------------- | ---------------------------------- |
+| `StaticArray T N` | `Array T`  | `[1, -10, 26]`, `[0..9]`, ...          | [`std::array<T, N>`](https://en.cppreference.com/w/cpp/container/array)                 |
+| `DynamicArray T`  | `Array T`  | Same as `StaticArray`                  | [`std::vector<T>`](https://en.cppreference.com/w/cpp/container/vector)                   |
+| `NaturalN`        | `Natural`  | `0`, `1`, `2`, `3`, ...                | `uintN_t`                          |
+| `IntegerN`        | `Integer`  | `1`, `0`, `-1`, `-2`, ...              | `intN_t`                           |
+| `RationalN`       | `Rational` | `1/3`, `2/7`, `6/21`, ...              | `div_t`, `ldiv_t`, etc.            |
+| `RealN`           | `Real`     | `0.1`, `1.1111`, `69.420`, `9001`, ... | `float`, `double` or `long double` |
 
-### Compound Types
+### Composite Types
 
-Compound types are used to construct more complicated types from other types. A compound type may fall into the category of 'refined' or 'value' depending on the types used to construct it.
+Composite types are used to construct more complicated types from other types. A composite type may fall into the category of 'refined' or 'value' depending on the types used to construct it.
 
-| Name                         | Base Type | Type Syntax        | Value Syntax                              | Possible C/C++ Type        |
-| ---------------------------- | --------- | ------------------ | ----------------------------------------- | -------------------------- |
-| Static array                 | `Array T` | `StaticArray T N`  | `[x0, x1, xn...]`                         | `T[N]`                     |
-| Ordered map                  | `Map K T` | `OrderedMap K T`   | `["x0" -> x0, "x1" -> x1, "xn" -> xn...]` | `std::map<K, T>`           |
-| Unordered map                | `Map K T` | `UnorderedMap K T` | Same as above                             | `std::unordered_map<K, T>` |
-| Sum type / Union             | N/A       | `T \| U...`         | Value of any of the summed types          | `std::variant<T, U...>`    |
-| Product type / Tuple         | N/A       | `T * U...`         | `(1, "Hello")`                            | `std::tuple<T, U...>`      |
-| Composite data type / Struct | N/A       | `{x: T, xs: U...}` | Constructor based                         | `struct{ T x; U xs...; }`  |
+| Name                           | Base Type  | Type Syntax        | Value Syntax                              | C/C++ Type analogue                                          |
+| ------------------------------ | ---------- | ------------------ | ----------------------------------------- | ------------------------------------------------------------ |
+| Ordered map                    | `Map K T`  | `OrderedMap K T`   | `["x0" -> x0, "x1" -> x1, "xn" -> xn...]` | [`std::map<K, T>`](https://en.cppreference.com/w/cpp/container/map) |
+| Unordered map                  | `Map K T`  | `UnorderedMap K T` | Same as above                             | [`std::unordered_map<K, T>`](https://en.cppreference.com/w/cpp/container/unordered_map) |
+| Sum type (Descriminated Union) | `Infinity` | `T \| U...`        | Any value of any one of the summed types  | [`std::variant<T, U...>`](https://en.cppreference.com/w/cpp/utility/variant) |
+| Product type / Tuple           | `Infinity` | `T * U...`         | `(1, "Hello")`                            | [`std::tuple<T, U...>`](https://en.cppreference.com/w/cpp/utility/tuple) |
+| Object / Struct                | `Infinity` | `{x: T, xs: U...}` | Constructor based                         | [`struct{ T x; U xs...; }`](https://en.cppreference.com/w/c/language/struct) |
 
 ## Type Promotion
 

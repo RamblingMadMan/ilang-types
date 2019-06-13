@@ -44,6 +44,15 @@ namespace ilang{
 		 *
 		 **/
 		std::vector<const Type*> types;
+		
+		/**
+		 * \brief Names associated with inner types.
+		 * 
+		 * This will be empty or types.size() elements long
+		 * 
+		 * Names are used for compound object types to store their member information
+		 **/
+		std::vector<std::string> names;
 	};
 
 	//! \brief Used for type comparisons
@@ -89,6 +98,10 @@ namespace ilang{
 		std::map<std::vector<TypeHandle>, std::map<TypeHandle, TypeHandle>> functionTypes;
 		std::map<std::vector<TypeHandle>, TypeHandle> sumTypes;
 		std::map<std::vector<TypeHandle>, TypeHandle> productTypes;
+		std::map<TypeHandle, TypeHandle> treeTypes;
+		std::map<TypeHandle, std::map<TypeHandle, TypeHandle>> mapTypes;
+		std::map<TypeHandle, TypeHandle> listTypes, arrayTypes, dynamicArrayTypes;
+		std::map<TypeHandle, std::map<std::size_t, TypeHandle>> staticArrayTypes;
 		std::vector<TypeHandle> partialTypes;
 		std::vector<std::unique_ptr<Type>> storage;
 	};
@@ -120,7 +133,19 @@ namespace ilang{
 	bool isFunctionType(TypeHandle type, const TypeData &data) noexcept;
 	bool isNumberType(TypeHandle type, const TypeData &data) noexcept;
 	bool isStringType(TypeHandle type, const TypeData &data) noexcept;
+	bool isTreeType(TypeHandle type, const TypeData &data) noexcept;
 
+	/** \} */
+	
+	/**
+	 * \defgroup TreeTypeCheckers Tree type checking
+	 * \brief Functions for checking tree types
+	 * \{
+	 **/
+	
+	bool isListType(TypeHandle type, const TypeData &data) noexcept;
+	bool isArrayType(TypeHandle type, const TypeData &data) noexcept;
+	
 	/** \} */
 
 	/**
@@ -154,56 +179,33 @@ namespace ilang{
 
 	//! Find the most-refined common type
 	TypeHandle findCommonType(TypeHandle type0, TypeHandle type1) noexcept;
-	
-	//! Find the infinity type
+
 	TypeHandle findInfinityType(const TypeData &data) noexcept;
-
-	//! Find the type type
-	TypeHandle findTypeType(const TypeData &data) noexcept;
 	
-	//! Find the unit type
-	TypeHandle findUnitType(const TypeData &data) noexcept;
-
-	//! Find a partial type
 	TypeHandle findPartialType(const TypeData &data, std::optional<std::uint32_t> id = std::nullopt) noexcept;
-
-	//! Find a string type
+	TypeHandle findTypeType(const TypeData &data) noexcept;
+	TypeHandle findUnitType(const TypeData &data) noexcept;
 	TypeHandle findStringType(const TypeData &data, std::optional<StringEncoding> encoding = std::nullopt) noexcept;
-
-	//! Find a boolean type
-	TypeHandle findBooleanType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
-
-	//! Find a natural type
-	TypeHandle findNaturalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
-
-	//! Find an integer type
-	TypeHandle findIntegerType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
 	
-	//! Find a rational type
-	TypeHandle findRationalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	TypeHandle findTreeType(const TypeData &data, TypeHandle t) noexcept;
+	TypeHandle findListType(const TypeData &data, TypeHandle t) noexcept;
+	TypeHandle findArrayType(const TypeData &data, TypeHandle t) noexcept;
+	TypeHandle findDynamicArrayType(const TypeData &data, TypeHandle t) noexcept;
+	TypeHandle findStaticArrayType(const TypeData &data, TypeHandle t, std::size_t n) noexcept;
 	
-	//! Find a real type
-	TypeHandle findRealType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
-
-	//! Find an imaginary type
-	TypeHandle findImaginaryType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
-
-	//! Find a complex type
-	TypeHandle findComplexType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
-
-	//! Find the number type
 	TypeHandle findNumberType(const TypeData &data) noexcept;
+	TypeHandle findComplexType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	TypeHandle findImaginaryType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	TypeHandle findRealType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	TypeHandle findRationalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	TypeHandle findIntegerType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	TypeHandle findNaturalType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
+	TypeHandle findBooleanType(const TypeData &data, std::uint32_t numBits = 0) noexcept;
 	
-	//! Find a sum type
 	TypeHandle findSumType(const TypeData &data, std::vector<TypeHandle> innerTypes) noexcept;
-	
-	//! Find a product type
 	TypeHandle findProductType(const TypeData &data, const std::vector<TypeHandle> &innerTypes) noexcept;
-
-	//! Find function base type
+	
 	TypeHandle findFunctionType(const TypeData &data) noexcept;
-
-	//! Find a function type
 	TypeHandle findFunctionType(const TypeData &data, const std::vector<TypeHandle> &params, TypeHandle result) noexcept;
 	
 	/** \} */
@@ -219,52 +221,31 @@ namespace ilang{
 	//! \brief Result type of possibly state modifying type calculations
 	using TypeResult = std::pair<TypeData, TypeHandle>;
 
-	//! Get the infinity type
 	TypeResult getInfinityType(TypeData data);
-
-	//! Get the type type
-	TypeResult getTypeType(TypeData data);
 	
-	//! Get the unit type
-	TypeResult getUnitType(TypeData data);
-
-	//! Get a string type
-	TypeResult getStringType(TypeData data, std::optional<StringEncoding> encoding = std::nullopt);
-
-	//! Get a boolean type
-	TypeResult getBooleanType(TypeData data, std::uint32_t numBits = 0);
-
-	//! Get a natural type
-	TypeResult getNaturalType(TypeData data, std::uint32_t numBits = 0);
-	
-	//! Get an integer type
-	TypeResult getIntegerType(TypeData data, std::uint32_t numBits = 0);
-	
-	//! Get a rational type
-	TypeResult getRationalType(TypeData data, std::uint32_t numBits = 0);
-	
-	//! Get an imaginary type
-	TypeResult getImaginaryType(TypeData data, std::uint32_t numBits = 0);
-
-	//! Get a real type
-	TypeResult getRealType(TypeData data, std::uint32_t numBits = 0);
-
-	//! Get a complex type
-	TypeResult getComplexType(TypeData data, std::uint32_t numBits = 0);
-
-	//! Get the number type
-	TypeResult getNumberType(TypeData data);
-	
-	//! Get a unique partial (incomplete) type
 	TypeResult getPartialType(TypeData data);
+	TypeResult getTypeType(TypeData data);
+	TypeResult getUnitType(TypeData data);
+	TypeResult getStringType(TypeData data, std::optional<StringEncoding> encoding = std::nullopt);
+	
+	TypeResult getTreeType(TypeData data, TypeHandle t);
+	TypeResult getListType(TypeData data, TypeHandle t);
+	TypeResult getArrayType(TypeData data, TypeHandle t);
+	TypeResult getDynamicArrayType(TypeData data, TypeHandle t);
+	TypeResult getStaticArrayType(TypeData data, TypeHandle t, std::size_t n);
 
-	//! Get a function type
+	TypeResult getNumberType(TypeData data);
+	TypeResult getComplexType(TypeData data, std::uint32_t numBits = 0);
+	TypeResult getImaginaryType(TypeData data, std::uint32_t numBits = 0);
+	TypeResult getRealType(TypeData data, std::uint32_t numBits = 0);
+	TypeResult getRationalType(TypeData data, std::uint32_t numBits = 0);
+	TypeResult getIntegerType(TypeData data, std::uint32_t numBits = 0);
+	TypeResult getNaturalType(TypeData data, std::uint32_t numBits = 0);
+	TypeResult getBooleanType(TypeData data, std::uint32_t numBits = 0);
+		
 	TypeResult getFunctionType(TypeData data, std::vector<TypeHandle> args, TypeHandle ret);
 	
-	//! Get a sum type
 	TypeResult getSumType(TypeData data, std::vector<TypeHandle> innerTypes = {});
-
-	//! Get a product type
 	TypeResult getProductType(TypeData data, std::vector<TypeHandle> innerTypes = {});
 	
 	/** \} */
