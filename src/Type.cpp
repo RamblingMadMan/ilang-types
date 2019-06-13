@@ -452,6 +452,7 @@ TypeResult ilang::getSumType(TypeData data, std::vector<TypeHandle> innerTypes){
 TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTypes){
 	if(innerTypes.size() < 2){
 		// TODO: throw TypeError
+		throw std::runtime_error("product type can not have less than 2 inner types");
 	}
 	
 	auto res = findProductType(data, innerTypes);
@@ -461,7 +462,6 @@ TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTyp
 	auto &&newType = data.storage.emplace_back(std::make_unique<Type>());
 	
 	newType->base = findInfinityType(data);
-	newType->types = std::move(innerTypes);
 	
 	newType->mangled = "p" + std::to_string(innerTypes.size()) + innerTypes[0]->mangled;
 	newType->str = innerTypes[0]->str;
@@ -470,6 +470,8 @@ TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTyp
 		newType->mangled += innerTypes[i]->mangled;
 		newType->str += " * " + innerTypes[i]->str;
 	}
+
+	newType->types = std::move(innerTypes);
 	
 	auto[it, good] = data.productTypes.try_emplace(newType->types, newType.get());
 	
@@ -499,7 +501,7 @@ TypeData::TypeData(){
 		return ptr.get();
 	};
 
-	auto newType = [this](auto str, auto mangled, auto base){
+	auto newType = [this](std::string str, std::string mangled, auto base){
 		auto &&ptr = storage.emplace_back(std::make_unique<Type>());
 		ptr->base = base;
 		ptr->str = std::move(str);
