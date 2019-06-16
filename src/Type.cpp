@@ -60,11 +60,6 @@ TypeHandle createFunctionType(
 	return data.storage.emplace_back(std::move(type)).get();
 }
 
-TypeResult type_result(TypeData &data, TypeHandle t) noexcept{
-	std::sort(begin(data.storage), end(data.storage));
-	return {std::move(data), t};
-}
-
 template<typename Container, typename Key>
 TypeHandle findInnerType(const TypeData &data, TypeHandle base, const Container &cont, std::optional<Key> key) noexcept{
 	if(key){
@@ -84,18 +79,17 @@ TypeHandle findInnerNumberType(const TypeData &data, TypeHandle base, const Cont
 }
 
 template<typename Container, typename Key, typename Create>
-TypeResult getInnerType(
+TypeHandle getInnerType(
 	TypeData &data, TypeHandle base,
 	Container &&container, std::optional<Key> key,
 	Create &&create
 ){
 	auto res = findInnerType(data, base, container, key);
-	if(res) return type_result(data, res);
-	else return type_result(data, create(data, *key));
+	return res ? res : create(data, *key);
 }
 
 template<typename Container, typename Create>
-TypeResult getInnerNumberType(
+TypeHandle getInnerNumberType(
 	TypeData &data, TypeHandle base,
 	Container &&container, std::uint32_t numBits,
 	Create &&create
@@ -188,13 +182,13 @@ TypeHandle create##T##Type(TypeData &data, std::uint32_t numBits){\
 TypeHandle ilang::find##T##Type(const TypeData &data, std::uint32_t numBits) noexcept{\
 	return findInnerNumberType(data, data.t##Type, data.sized##T##Types, numBits);\
 }\
-TypeResult ilang::get##T##Type(TypeData data, std::uint32_t numBits){\
+TypeHandle ilang::get##T##Type(TypeData &data, std::uint32_t numBits){\
 	return getInnerNumberType(data, data.t##Type, data.sized##T##Types, numBits, create##T##Type);\
 }
 
 #define ROOT_TYPE(T, t)\
 TypeHandle ilang::find##T##Type(const TypeData &data) noexcept{ return data.t##Type; }\
-TypeResult ilang::get##T##Type(TypeData data){ return type_result(data, data.t##Type); }
+TypeHandle ilang::get##T##Type(TypeData &data){ return data.t##Type; }
 
 ROOT_TYPE(Infinity, infinity)
 ROOT_TYPE(Type, type)
@@ -214,17 +208,29 @@ auto getSortedTypes(const TypeData &data, Comp &&comp = std::less<void>{}){
 	std::vector<TypeHandle> types;
 	types.reserve(data.storage.size());
 	
-	for(auto &&ptr : data.storage){
-		types.emplace_back(ptr.get());
-	}
+	std::transform(
+		begin(data.storage), end(data.storage),
+		std::back_inserter(types),
+		[](auto &&ptr){ return ptr.get(); }
+	);
 	
 	std::sort(begin(types), end(types), std::forward<Comp>(comp));
 	return types;
 }
 
 TypeHandle ilang::findTypeByString(const TypeData &data, std::string_view str){
+	auto strS = std::string(str);
+	
+	auto aliased = data.typeAliases.find(strS);
+	if(aliased != end(data.typeAliases))
+		return aliased->second;
+	
 	auto types = getSortedTypes(data, [](auto lhs, auto rhs){ return lhs->str < rhs->str; });
-	auto res = std::lower_bound(begin(types), end(types), str, [](TypeHandle lhs, auto rhs){ return lhs->str < rhs; });
+	auto res = std::lower_bound(begin(types), end(types), str, [](TypeHandle lhs, std::string_view rhs){ return lhs->str < std::string(rhs); });
+	
+	if((res != end(types)) && (str < (*res)->str))
+		res = end(types);
+	
 	if(res != end(types))
 		return *res;
 	
@@ -233,7 +239,11 @@ TypeHandle ilang::findTypeByString(const TypeData &data, std::string_view str){
 
 TypeHandle ilang::findTypeByMangled(const TypeData &data, std::string_view mangled){
 	auto types = getSortedTypes(data, [](auto lhs, auto rhs){ return lhs->mangled < rhs->mangled; });
-	auto res = std::lower_bound(begin(types), end(types), mangled, [](TypeHandle lhs, auto rhs){ return lhs->mangled < rhs; });
+	auto res = std::lower_bound(begin(types), end(types), mangled, [](TypeHandle lhs, std::string_view rhs){ return lhs->mangled < std::string(rhs); });
+	
+	if((res != end(types)) && (mangled < (*res)->mangled))
+		res = end(types);
+	
 	if(res != end(types))
 		return *res;
 	
@@ -313,13 +323,13 @@ TypeHandle ilang::findFunctionType(const TypeData &data, const std::vector<TypeH
 
 TypeHandle ilang::findFunctionType(const TypeData &data) noexcept{ return data.functionType; }
 
-TypeResult ilang::getStringType(TypeData data, std::optional<StringEncoding> encoding){
+TypeHandle ilang::getStringType(TypeData &data, std::optional<StringEncoding> encoding){
 	return getInnerType(data, data.stringType, data.encodedStringTypes, encoding, createEncodedStringType);
 }
 
-TypeResult ilang::getTreeType(TypeData data, TypeHandle t){
+TypeHandle ilang::getTreeType(TypeData &data, TypeHandle t){
 	if(auto res = findTreeType(data, t))
-		return type_result(data, res);
+		return res;
 	
 	auto ptr = data.storage.emplace_back(std::make_unique<Type>()).get();
 	
@@ -330,16 +340,16 @@ TypeResult ilang::getTreeType(TypeData data, TypeHandle t){
 	
 	data.treeTypes[t] = ptr;
 	
-	return type_result(data, ptr);
+	return ptr;
 }
 
-TypeResult ilang::getListType(TypeData data, TypeHandle t){
+TypeHandle ilang::getListType(TypeData &data, TypeHandle t){
 	if(auto res = findListType(data, t))
-		return type_result(data, res);
+		return res;
 	
 	auto newType = std::make_unique<Type>();
 	
-	std::tie(data, newType->base) = getTreeType(std::move(data), t);
+	newType->base = getTreeType(data, t);
 	newType->str = "(List " + t->str + ")";
 	newType->mangled = "ol0" + t->mangled;
 	newType->types = {t};
@@ -348,16 +358,16 @@ TypeResult ilang::getListType(TypeData data, TypeHandle t){
 	
 	data.listTypes[t] = ptr;
 	
-	return type_result(data, ptr);
+	return ptr;
 }
 
-TypeResult ilang::getArrayType(TypeData data, TypeHandle t){
+TypeHandle ilang::getArrayType(TypeData &data, TypeHandle t){
 	if(auto res = findArrayType(data, t))
-		return type_result(data, res);
+		return res;
 	
 	auto newType = std::make_unique<Type>();
 	
-	std::tie(data, newType->base) = getListType(std::move(data), t);
+	newType->base = getListType(data, t);
 	newType->str = "(Array " + t->str + ")";
 	newType->mangled = "oa0" + t->mangled;
 	newType->types = {t};
@@ -366,16 +376,16 @@ TypeResult ilang::getArrayType(TypeData data, TypeHandle t){
 	
 	data.arrayTypes[t] = ptr;
 	
-	return type_result(data, ptr);
+	return ptr;
 }
 
-TypeResult ilang::getDynamicArrayType(TypeData data, TypeHandle t){
+TypeHandle ilang::getDynamicArrayType(TypeData &data, TypeHandle t){
 	if(auto res = findDynamicArrayType(data, t))
-		return type_result(data, res);
+		return res;
 	
 	auto newType = std::make_unique<Type>();
 	
-	std::tie(data, newType->base) = getArrayType(std::move(data), t);
+	newType->base = getArrayType(data, t);
 	newType->str = "(DynamicArray " + t->str + ")";
 	newType->mangled = "a0" + t->mangled;
 	newType->types = {t};
@@ -384,18 +394,18 @@ TypeResult ilang::getDynamicArrayType(TypeData data, TypeHandle t){
 	
 	data.dynamicArrayTypes[t] = ptr;
 	
-	return type_result(data, ptr);
+	return ptr;
 }
 
-TypeResult ilang::getStaticArrayType(TypeData data, TypeHandle t, std::size_t n){
+TypeHandle ilang::getStaticArrayType(TypeData &data, TypeHandle t, std::size_t n){
 	if(auto res = findStaticArrayType(data, t, n))
-		return type_result(data, res);
+		return res;
 	
 	auto newType = std::make_unique<Type>();
 	
 	auto nStr = std::to_string(n);
 	
-	std::tie(data, newType->base) = getArrayType(std::move(data), t);
+	newType->base = getArrayType(data, t);
 	newType->str = "(StaticArray " + t->str + " " + nStr + ")";
 	newType->mangled = "a" + nStr + t->mangled;
 	newType->types = {t};
@@ -404,26 +414,25 @@ TypeResult ilang::getStaticArrayType(TypeData data, TypeHandle t, std::size_t n)
 	
 	data.staticArrayTypes[t][n] = ptr;
 	
-	return type_result(data, ptr);
+	return ptr;
 }
 
-TypeResult ilang::getPartialType(TypeData data){
+TypeHandle ilang::getPartialType(TypeData &data){
 	auto type = std::make_unique<Type>();
 	auto id = std::to_string(data.partialTypes.size());
 	type->base = data.partialType;
 	type->str = "Partial" + id;
 	type->mangled = "_" + id;
 	auto &&typePtr = data.storage.emplace_back(std::move(type));
-	return type_result(data, typePtr.get());
+	return typePtr.get();
 }
 
-TypeResult ilang::getSumType(TypeData data, std::vector<TypeHandle> innerTypes){
+TypeHandle ilang::getSumType(TypeData &data, std::vector<TypeHandle> innerTypes){
 	std::sort(begin(innerTypes), end(innerTypes));
 	innerTypes.erase(std::unique(begin(innerTypes), end(innerTypes)), end(innerTypes));
 	
-	auto res = findSumTypeInner(data, innerTypes);
-	if(res)
-		return type_result(data, res);
+	if(auto res = findSumTypeInner(data, innerTypes))
+		return res;
 	
 	auto &&newType = data.storage.emplace_back(std::make_unique<Type>());
 	
@@ -446,18 +455,17 @@ TypeResult ilang::getSumType(TypeData data, std::vector<TypeHandle> innerTypes){
 		// TODO: throw TypeError
 	}
 	
-	return type_result(data, newType.get());
+	return newType.get();
 }
 
-TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTypes){
+TypeHandle ilang::getProductType(TypeData &data, std::vector<TypeHandle> innerTypes){
 	if(innerTypes.size() < 2){
 		// TODO: throw TypeError
 		throw std::runtime_error("product type can not have less than 2 inner types");
 	}
 	
-	auto res = findProductType(data, innerTypes);
-	if(res)
-		return type_result(data, res);
+	if(auto res = findProductType(data, innerTypes))
+		return res;
 	
 	auto &&newType = data.storage.emplace_back(std::make_unique<Type>());
 	
@@ -479,17 +487,17 @@ TypeResult ilang::getProductType(TypeData data, std::vector<TypeHandle> innerTyp
 		// TODO: throw TypeError
 	}
 	
-	return type_result(data, newType.get());
+	return newType.get();
 }
 
-TypeResult ilang::getFunctionType(TypeData data, std::vector<TypeHandle> params, TypeHandle result){
+TypeHandle ilang::getFunctionType(TypeData &data, std::vector<TypeHandle> params, TypeHandle result){
 	auto &&retMap = data.functionTypes[params];
 
 	auto res = retMap.find(result);
 	if(res != end(retMap))
-		return type_result(data, res->second);
+		return res->second;
 
-	return type_result(data, retMap[result] = createFunctionType(data, params, result));
+	return retMap[result] = createFunctionType(data, params, result);
 }
 
 TypeData::TypeData(){
@@ -529,4 +537,62 @@ TypeData::TypeData(){
 	integerType = newType("Integer", "z?", rationalType);
 	naturalType = newType("Natural", "n?", integerType);
 	booleanType = newType("Boolean", "b?", naturalType);
+	
+	typeAliases["Ratio"] = rationalType;
+	typeAliases["Int"] = integerType;
+	typeAliases["Nat"] = naturalType;
+	typeAliases["Bool"] = booleanType;
+	
+	auto real64Type = createSizedNumberType(*this, realType, "Real", "r", 64);
+	auto real32Type = createSizedNumberType(*this, real64Type, "Real", "r", 32);
+	auto real16Type = createSizedNumberType(*this, real32Type, "Real", "r", 16);
+	
+	sizedRealTypes[64] = real64Type;
+	sizedRealTypes[32] = real32Type;
+	sizedRealTypes[16] = real16Type;
+	
+	auto rational128Type = createSizedNumberType(*this, realType, "Rational", "q", 128);
+	auto rational64Type = createSizedNumberType(*this, rational128Type, "Rational", "q", 64);
+	auto rational32Type = createSizedNumberType(*this, rational64Type, "Rational", "q", 32);
+	auto rational16Type = createSizedNumberType(*this, rational32Type, "Rational", "q", 16);
+	
+	sizedRationalTypes[128] = rational128Type;
+	sizedRationalTypes[64] = rational64Type;
+	sizedRationalTypes[32] = rational32Type;
+	sizedRationalTypes[16] = rational16Type;
+	
+	typeAliases["Ratio128"] = rational128Type;
+	typeAliases["Ratio64"] = rational64Type;
+	typeAliases["Ratio32"] = rational32Type;
+	typeAliases["Ratio16"] = rational16Type;
+	
+	auto int64Type = createSizedNumberType(*this, integerType, "Integer", "i", 64);
+	auto int32Type = createSizedNumberType(*this, int64Type, "Integer", "i", 32);
+	auto int16Type = createSizedNumberType(*this, int32Type, "Integer", "i", 16);
+	auto int8Type = createSizedNumberType(*this, int16Type, "Integer", "i", 8);
+	
+	sizedIntegerTypes[64] = int64Type;
+	sizedIntegerTypes[32] = int32Type;
+	sizedIntegerTypes[16] = int16Type;
+	sizedIntegerTypes[8]  = int8Type;
+	
+	typeAliases["Int64"] = int64Type;
+	typeAliases["Int32"] = int32Type;
+	typeAliases["Int16"] = int16Type;
+	typeAliases["Int8"] = int8Type;
+	
+	auto nat64Type = createSizedNumberType(*this, naturalType, "Natural", "n", 64);
+	auto nat32Type = createSizedNumberType(*this, nat64Type, "Natural", "n", 32);
+	auto nat16Type = createSizedNumberType(*this, nat32Type, "Natural", "n", 16);
+	auto nat8Type = createSizedNumberType(*this, nat16Type, "Natural", "n", 8);
+	
+	sizedNaturalTypes[64] = nat64Type;
+	sizedNaturalTypes[32] = nat32Type;
+	sizedNaturalTypes[16] = nat16Type;
+	sizedNaturalTypes[8]  = nat8Type;
+	
+	typeAliases["Nat64"] = nat64Type;
+	typeAliases["Nat32"] = nat32Type;
+	typeAliases["Nat16"] = nat16Type;
+	typeAliases["Nat8"] = nat8Type;
 }

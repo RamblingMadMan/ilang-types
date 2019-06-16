@@ -62,23 +62,15 @@ namespace ilang{
 	 * \brief Data required for type calculations
 	 *
 	 * This should be treated as an opaque data type and
-	 * only ever be used with the accompanying find and get functions:
-	 * \code{.cpp}
-	 * // possible insertions; always get a result
-	 * TypeData data;
-	 * 
-	 * auto[typeData, int32_type] = getIntegerType(std::move(data), 32);
-	 *
-	 * // just a query; can get nullptr
-	 * auto int_type = findIntegerType(typeData);
-	 * \endcode
-	 *
-	 * TypeData exists this way to make state change explicit. This
-	 * verbose expression of state is important for high-level interoperability
-	 * with languages using the type system.
+	 * only ever be used with the accompanying find and get functions
 	 **/
 	struct TypeData{
 		TypeData();
+		
+		TypeData(TypeData&&) = default;
+		TypeData(const TypeData&) = delete;
+		
+		TypeData &operator=(TypeData&&) noexcept = default;
 
 		TypeHandle infinityType;
 		TypeHandle partialType;
@@ -104,6 +96,8 @@ namespace ilang{
 		std::map<TypeHandle, std::map<std::size_t, TypeHandle>> staticArrayTypes;
 		std::vector<TypeHandle> partialTypes;
 		std::vector<std::unique_ptr<Type>> storage;
+		
+		std::map<std::string, TypeHandle> typeAliases;
 	};
 
 	/**
@@ -218,35 +212,32 @@ namespace ilang{
 	 * \{
 	 **/
 
-	//! \brief Result type of possibly state modifying type calculations
-	using TypeResult = std::pair<TypeData, TypeHandle>;
-
-	TypeResult getInfinityType(TypeData data);
+	TypeHandle getInfinityType(TypeData &data);
 	
-	TypeResult getPartialType(TypeData data);
-	TypeResult getTypeType(TypeData data);
-	TypeResult getUnitType(TypeData data);
-	TypeResult getStringType(TypeData data, std::optional<StringEncoding> encoding = std::nullopt);
+	TypeHandle getPartialType(TypeData &data);
+	TypeHandle getTypeType(TypeData &data);
+	TypeHandle getUnitType(TypeData &data);
+	TypeHandle getStringType(TypeData &data, std::optional<StringEncoding> encoding = std::nullopt);
 	
-	TypeResult getTreeType(TypeData data, TypeHandle t);
-	TypeResult getListType(TypeData data, TypeHandle t);
-	TypeResult getArrayType(TypeData data, TypeHandle t);
-	TypeResult getDynamicArrayType(TypeData data, TypeHandle t);
-	TypeResult getStaticArrayType(TypeData data, TypeHandle t, std::size_t n);
+	TypeHandle getTreeType(TypeData &data, TypeHandle t);
+	TypeHandle getListType(TypeData &data, TypeHandle t);
+	TypeHandle getArrayType(TypeData &data, TypeHandle t);
+	TypeHandle getDynamicArrayType(TypeData &data, TypeHandle t);
+	TypeHandle getStaticArrayType(TypeData &data, TypeHandle t, std::size_t n);
 
-	TypeResult getNumberType(TypeData data);
-	TypeResult getComplexType(TypeData data, std::uint32_t numBits = 0);
-	TypeResult getImaginaryType(TypeData data, std::uint32_t numBits = 0);
-	TypeResult getRealType(TypeData data, std::uint32_t numBits = 0);
-	TypeResult getRationalType(TypeData data, std::uint32_t numBits = 0);
-	TypeResult getIntegerType(TypeData data, std::uint32_t numBits = 0);
-	TypeResult getNaturalType(TypeData data, std::uint32_t numBits = 0);
-	TypeResult getBooleanType(TypeData data, std::uint32_t numBits = 0);
+	TypeHandle getNumberType(TypeData &data);
+	TypeHandle getComplexType(TypeData &data, std::uint32_t numBits = 0);
+	TypeHandle getImaginaryType(TypeData &data, std::uint32_t numBits = 0);
+	TypeHandle getRealType(TypeData &data, std::uint32_t numBits = 0);
+	TypeHandle getRationalType(TypeData &data, std::uint32_t numBits = 0);
+	TypeHandle getIntegerType(TypeData &data, std::uint32_t numBits = 0);
+	TypeHandle getNaturalType(TypeData &data, std::uint32_t numBits = 0);
+	TypeHandle getBooleanType(TypeData &data, std::uint32_t numBits = 0);
 		
-	TypeResult getFunctionType(TypeData data, std::vector<TypeHandle> args, TypeHandle ret);
+	TypeHandle getFunctionType(TypeData &data, std::vector<TypeHandle> args, TypeHandle ret);
 	
-	TypeResult getSumType(TypeData data, std::vector<TypeHandle> innerTypes = {});
-	TypeResult getProductType(TypeData data, std::vector<TypeHandle> innerTypes = {});
+	TypeHandle getSumType(TypeData &data, std::vector<TypeHandle> innerTypes = {});
+	TypeHandle getProductType(TypeData &data, std::vector<TypeHandle> innerTypes = {});
 	
 	/** \} */
 }
